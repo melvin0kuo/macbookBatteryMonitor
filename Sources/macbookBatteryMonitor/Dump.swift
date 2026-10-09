@@ -1,6 +1,6 @@
 import Foundation
 
-/// `BatteryMonitor --dump`：把目前讀到的資料印成 JSON，方便和 pmset / system_profiler 對照
+/// `macbookBatteryMonitor --dump`：把目前讀到的資料印成 JSON，方便和 pmset / system_profiler 對照
 enum DumpCommand {
     private struct Output: Encodable {
         var snapshot: BatterySnapshot

@@ -1,4 +1,4 @@
-# 電池監控 BatteryMonitor
+# 電池監控 macbookBatteryMonitor
 
 macOS 選單列電池資訊 App（參考 Stats / AlDente）。只讀取資訊，不會更動任何充電設定。
 
@@ -20,15 +20,15 @@ macOS 選單列電池資訊 App（參考 Stats / AlDente）。只讀取資訊，
 只需要 Command Line Tools，不需要 Xcode。
 
 ```bash
-./build.sh            # 產生 build/BatteryMonitor.app
+./build.sh            # 產生 build/macbookBatteryMonitor.app
 ./build.sh install    # 安裝到 /Applications 並啟動
 ```
 
 ## 除錯用參數
 ```bash
-/Applications/BatteryMonitor.app/Contents/MacOS/BatteryMonitor --dump            # 目前資料印成 JSON
-/Applications/BatteryMonitor.app/Contents/MacOS/BatteryMonitor --snapshot <資料夾> # 面板畫成 PNG
-/Applications/BatteryMonitor.app/Contents/MacOS/BatteryMonitor --selftest-panel    # 自動開面板 20 秒再關，測耗電用
+/Applications/macbookBatteryMonitor.app/Contents/MacOS/macbookBatteryMonitor --dump            # 目前資料印成 JSON
+/Applications/macbookBatteryMonitor.app/Contents/MacOS/macbookBatteryMonitor --snapshot <資料夾> # 面板畫成 PNG
+/Applications/macbookBatteryMonitor.app/Contents/MacOS/macbookBatteryMonitor --selftest-panel    # 自動開面板 20 秒再關，測耗電用
 ```
 
 ## 省電設計

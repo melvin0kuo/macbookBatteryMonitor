@@ -33,6 +33,7 @@ final class HistoryStore {
 
     init() {
         let dir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            // 沿用改名前的資料夾，舊的歷史紀錄才讀得到
             .appendingPathComponent("BatteryMonitor", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         fileURL = dir.appendingPathComponent("history.json")

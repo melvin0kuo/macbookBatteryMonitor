@@ -10,6 +10,10 @@ enum LoginItem {
     }
 
     private static let label = "com.kuan.batterymonitor"
+    /// 上次自動註冊時 App 的位置
+    static let registeredPathKey = "loginItemRegisteredPath"
+    /// 使用者在設定裡手動關掉
+    static let disabledByUserKey = "loginItemDisabledByUser"
 
     private static var agentURL: URL {
         FileManager.default.homeDirectoryForCurrentUser

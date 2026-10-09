@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// `BatteryMonitor --snapshot <資料夾>`：在螢幕外把面板各分頁和選單列圖示畫成 PNG，開發時檢查版面用
+/// `macbookBatteryMonitor --snapshot <資料夾>`：在螢幕外把面板各分頁和選單列圖示畫成 PNG，開發時檢查版面用
 @MainActor
 enum SnapshotCommand {
     static func run(directory: String) {

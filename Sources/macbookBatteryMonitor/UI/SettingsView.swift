@@ -135,6 +135,7 @@ struct SettingsView: View {
     }
 
     private func setLoginItem(_ enabled: Bool) {
+        UserDefaults.standard.set(!enabled, forKey: LoginItem.disabledByUserKey)
         do {
             try LoginItem.setEnabled(enabled)
             ui.loginError = nil

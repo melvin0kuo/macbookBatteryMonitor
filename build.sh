@@ -1,11 +1,11 @@
 #!/bin/bash
-# 編譯並打包成 BatteryMonitor.app
-#   ./build.sh          → build/BatteryMonitor.app
+# 編譯並打包成 macbookBatteryMonitor.app
+#   ./build.sh          → build/macbookBatteryMonitor.app
 #   ./build.sh install  → 另外安裝到 /Applications 並啟動
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP_NAME="BatteryMonitor"
+APP_NAME="macbookBatteryMonitor"
 APP="build/$APP_NAME.app"
 
 swift build -c release

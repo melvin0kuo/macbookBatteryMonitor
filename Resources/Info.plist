@@ -5,11 +5,11 @@
     <key>CFBundleDevelopmentRegion</key>
     <string>zh_TW</string>
     <key>CFBundleExecutable</key>
-    <string>BatteryMonitor</string>
+    <string>macbookBatteryMonitor</string>
     <key>CFBundleIdentifier</key>
     <string>com.kuan.batterymonitor</string>
     <key>CFBundleName</key>
-    <string>BatteryMonitor</string>
+    <string>macbookBatteryMonitor</string>
     <key>CFBundleDisplayName</key>
     <string>電池監控</string>
     <key>CFBundleIconFile</key>

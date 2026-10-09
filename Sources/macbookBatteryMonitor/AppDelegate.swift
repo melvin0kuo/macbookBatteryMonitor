@@ -49,7 +49,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         NSWorkspace.shared.notificationCenter.addObserver(
             self, selector: #selector(willSleep), name: NSWorkspace.willSleepNotification, object: nil
         )
-        enableLoginItemOnFirstLaunch()
+        registerLoginItemIfNeeded()
         runPanelSelfTestIfRequested()
     }
 
@@ -255,11 +255,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     // MARK: - Login item
 
-    /// 第一次從 /Applications 啟動時預設開啟開機自啟動
-    private func enableLoginItemOnFirstLaunch() {
-        let key = "didEnableLoginItemOnFirstLaunch"
-        guard LoginItem.isInApplications, !UserDefaults.standard.bool(forKey: key) else { return }
-        UserDefaults.standard.set(true, forKey: key)
+    /// 從 /Applications 啟動、而且這個位置還沒註冊過開機自啟動時（第一次安裝、App 改名或搬移）自動註冊。
+    /// 使用者在設定裡關掉後就不再自動開啟。
+    private func registerLoginItemIfNeeded() {
+        let defaults = UserDefaults.standard
+        let path = Bundle.main.bundlePath
+        guard LoginItem.isInApplications,
+              !defaults.bool(forKey: LoginItem.disabledByUserKey),
+              defaults.string(forKey: LoginItem.registeredPathKey) != path else { return }
+        defaults.set(path, forKey: LoginItem.registeredPathKey)
         try? LoginItem.setEnabled(true)
     }
 }

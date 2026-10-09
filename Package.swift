@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "BatteryMonitor",
+    name: "macbookBatteryMonitor",
     platforms: [.macOS(.v14)],
     targets: [
         .executableTarget(
-            name: "BatteryMonitor",
-            path: "Sources/BatteryMonitor",
+            name: "macbookBatteryMonitor",
+            path: "Sources/macbookBatteryMonitor",
             linkerSettings: [
                 .linkedFramework("IOKit"),
                 .linkedFramework("ServiceManagement"),
