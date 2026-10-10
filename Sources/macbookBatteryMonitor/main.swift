@@ -1,10 +1,5 @@
 import AppKit
 
-if CommandLine.arguments.contains("--dump-hardware") {
-    DumpCommand.runHardware()
-    exit(0)
-}
-
 if CommandLine.arguments.contains("--dump") {
     DumpCommand.run()
     exit(0)

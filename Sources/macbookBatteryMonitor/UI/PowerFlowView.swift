@@ -3,49 +3,10 @@ import SwiftUI
 struct PowerFlowView: View {
     let s: BatterySnapshot
     let e: Estimates
-    var breakdown: PowerBreakdown? = nil
-    var ui: PanelState? = nil
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        VStack(spacing: 5) {
-            if let ui, let breakdown {
-                HStack {
-                    if ui.powerFlowLevel != .overview {
-                        Button {
-                            ui.powerFlowLevel = ui.powerFlowLevel == .chip ? .components : .overview
-                        } label: {
-                            Label(ui.powerFlowLevel == .chip ? "系統細項" : "電力總覽", systemImage: "chevron.left")
-                        }
-                        .buttonStyle(.plain)
-                    } else {
-                        Text("電力流向").foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    if ui.powerFlowLevel == .overview {
-                        Button {
-                            ui.powerFlowLevel = .components
-                        } label: { Label("系統細項", systemImage: "chevron.right") }
-                        .buttonStyle(.plain)
-                        .help("展開螢幕背光、晶片運算與其他功耗")
-                    } else {
-                        Text("每秒更新").foregroundStyle(.secondary)
-                    }
-                }
-                .font(.caption)
-                if ui.powerFlowLevel == .overview {
-                    diagram
-                } else {
-                    ComponentPowerFlowView(breakdown: breakdown, ui: ui)
-                }
-            } else {
-                diagram
-            }
-        }
-    }
-
-    private var diagram: some View {
         PowerFlowDiagram(snapshot: s, estimates: e, animated: !reduceMotion, dark: colorScheme == .dark)
             .frame(height: 126)
             .accessibilityElement(children: .ignore)
@@ -85,8 +46,6 @@ private final class DiagramView: NSView {
         var dark: Bool
     }
     var configuration: Configuration?
-    private let flows = PowerFlowLayers()
-    private var branchIndex = 0
     override var isFlipped: Bool { true }
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -99,9 +58,7 @@ private final class DiagramView: NSView {
         guard let layer, let c = configuration, bounds.width > 100 else { return }
         CATransaction.begin()
         CATransaction.setDisableActions(true)
-        layer.sublayers?.filter { !($0.name ?? "").hasPrefix("flow-") }.forEach { $0.removeFromSuperlayer() }
-        flows.begin(in: layer)
-        branchIndex = 0
+        layer.sublayers?.forEach { $0.removeFromSuperlayer() }
         let clipping = CAShapeLayer()
         clipping.path = CGPath(roundedRect: bounds, cornerWidth: 15, cornerHeight: 15, transform: nil)
         layer.mask = clipping
@@ -111,7 +68,7 @@ private final class DiagramView: NSView {
         let sinkX = w - 44
         let x1 = sourceWidth + 4
         let x2 = sinkX - 4
-        let charging = c.connected && c.batteryWatts >= 0.05
+        let charging = c.batteryWatts >= 0.05
         let mixed = c.connected && c.batteryWatts <= -0.05
         let active = c.connected || abs(c.batteryWatts) >= 0.05
         let adapterText: String = c.adapterWatts.map { Format.watts($0) }
@@ -127,9 +84,9 @@ private final class DiagramView: NSView {
             node(CGRect(x: sinkX, y: 0, width: 44, height: split - 4), symbol: "battery.100percent.bolt")
             node(CGRect(x: sinkX, y: split + 10, width: 44, height: h - split - 10), symbol: "laptopcomputer")
             ribbon(x1: x1, x2: x2, sourceTop: 12, sourceBottom: sourceSplit,
-                   sinkTop: 0, sinkBottom: split - 4, value: Format.watts(c.batteryWatts), watts: c.batteryWatts, active: active)
+                   sinkTop: 0, sinkBottom: split - 4, value: Format.watts(c.batteryWatts), active: active)
             ribbon(x1: x1, x2: x2, sourceTop: sourceSplit, sourceBottom: h - 12,
-                   sinkTop: split + 10, sinkBottom: h, value: Format.watts(c.systemWatts), watts: c.systemWatts, active: active)
+                   sinkTop: split + 10, sinkBottom: h, value: Format.watts(c.systemWatts), active: active)
         } else if mixed {
             let split = h / 2
             node(CGRect(x: 0, y: 0, width: sourceWidth, height: split - 5),
@@ -140,18 +97,17 @@ private final class DiagramView: NSView {
             let share = max(0.25, min(0.75, abs(c.batteryWatts) / max(0.1, c.systemWatts ?? 0)))
             let join = h - 12 - (h - 24) * CGFloat(share)
             ribbon(x1: x1, x2: x2, sourceTop: 0, sourceBottom: split - 5,
-                   sinkTop: 12, sinkBottom: join, value: Format.watts(c.adapterWatts), watts: c.adapterWatts, active: true)
+                   sinkTop: 12, sinkBottom: join, value: adapterText, active: true)
             ribbon(x1: x1, x2: x2, sourceTop: split + 5, sourceBottom: h,
-                   sinkTop: join, sinkBottom: h - 12, value: Format.watts(abs(c.batteryWatts)), watts: abs(c.batteryWatts), active: true)
+                   sinkTop: join, sinkBottom: h - 12, value: Format.watts(abs(c.batteryWatts)), active: true)
         } else {
             let rect = CGRect(x: 0, y: 12, width: sourceWidth, height: h - 24)
             node(rect, symbol: c.connected ? "bolt.fill" : "battery.75percent",
                  value: c.connected ? adapterText : nil, bolt: c.connected)
             node(CGRect(x: sinkX, y: 12, width: 44, height: h - 24), symbol: "laptopcomputer")
             ribbon(x1: x1, x2: x2, sourceTop: 12, sourceBottom: h - 12,
-                   sinkTop: 12, sinkBottom: h - 12, value: Format.watts(c.systemWatts), watts: c.systemWatts, active: active)
+                   sinkTop: 12, sinkBottom: h - 12, value: Format.watts(c.systemWatts), active: active)
         }
-        flows.end()
         CATransaction.commit()
     }
 
@@ -189,15 +145,9 @@ private final class DiagramView: NSView {
     }
 
     private func ribbon(x1: CGFloat, x2: CGFloat, sourceTop: CGFloat, sourceBottom: CGFloat,
-                        sinkTop: CGFloat, sinkBottom: CGFloat, value: String, watts: Double?, active: Bool) {
-        let length = x2 - x1
-        let centerY = (sourceTop + sourceBottom + sinkTop + sinkBottom) / 4
-        guard let watts, watts.isFinite, watts > 0 else {
-            text(value, rect: CGRect(x: x1 + 4, y: centerY - 9, width: length - 8, height: 20), size: 12.5, weight: .semibold)
-            branchIndex += 1
-            return
-        }
+                        sinkTop: CGFloat, sinkBottom: CGFloat, value: String, active: Bool) {
         let path = CGMutablePath()
+        let length = x2 - x1
         path.move(to: CGPoint(x: x1, y: sourceTop))
         path.addCurve(to: CGPoint(x: x2, y: sinkTop),
                       control1: CGPoint(x: x1 + length * 0.5, y: sourceTop),
@@ -211,10 +161,34 @@ private final class DiagramView: NSView {
         base.path = path
         base.fillColor = surface.cgColor
         layer?.addSublayer(base)
-        flows.update(id: "flow-\(branchIndex)", path: path, bounds: bounds,
-                     animated: active && configuration?.animated == true,
-                     dark: configuration?.dark == true, startX: x1, endX: x2)
-        branchIndex += 1
+        if active && configuration?.animated == true {
+            let container = CALayer()
+            container.frame = bounds
+            let mask = CAShapeLayer()
+            mask.path = path
+            container.mask = mask
+            layer?.addSublayer(container)
+            for index in 0..<3 {
+                let glow = CAGradientLayer()
+                glow.bounds = CGRect(x: 0, y: 0, width: 36, height: bounds.height)
+                let light = configuration?.dark == true ? NSColor.white : NSColor.black
+                glow.colors = [light.withAlphaComponent(0).cgColor,
+                               light.withAlphaComponent(0.055).cgColor,
+                               light.withAlphaComponent(0).cgColor]
+                glow.startPoint = CGPoint(x: 0, y: 0.5)
+                glow.endPoint = CGPoint(x: 1, y: 0.5)
+                glow.position = CGPoint(x: x1 + length * (CGFloat(index) + 0.5) / 3, y: bounds.height / 2)
+                container.addSublayer(glow)
+                let travel = CABasicAnimation(keyPath: "position.x")
+                travel.fromValue = x1 - 18
+                travel.toValue = x2 + 18
+                travel.duration = 3.6
+                travel.repeatCount = .infinity
+                travel.beginTime = CACurrentMediaTime() - Double(index) * 1.2
+                glow.add(travel, forKey: "energyFlow")
+            }
+        }
+        let centerY = (sourceTop + sourceBottom + sinkTop + sinkBottom) / 4
         text(value, rect: CGRect(x: x1 + 4, y: centerY - 9, width: length - 8, height: 20), size: 12.5, weight: .semibold)
     }
 

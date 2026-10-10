@@ -40,7 +40,6 @@ enum Estimator {
     static func state(_ s: BatterySnapshot) -> PowerState {
         guard s.externalConnected else { return .discharging }
         if s.isCharging { return .charging }
-        if s.effectiveAmperage_mA < -50 { return .pluggedIdle }
         if let limit = s.chargeLimit?.limit, s.percent >= limit - 1 { return .limitReached }
         if s.fullyCharged || s.percent >= 100 { return .full }
         return .pluggedIdle
@@ -48,24 +47,15 @@ enum Estimator {
 
     static func estimates(_ s: BatterySnapshot, avgDischarge_mA: Double?, avgCharge_mA: Double?) -> Estimates {
         let state = state(s)
-        let registryWatts = Double(s.voltage_mV) * Double(s.amperage_mA) / 1_000_000
-        let measuredWatts = s.smcBatteryWatts ?? registryWatts
-        let batteryWatts = s.externalConnected ? measuredWatts
-            : min(0, measuredWatts > 0 ? registryWatts : measuredWatts)
+        let batteryWatts = Double(s.voltage_mV) * Double(s.amperage_mA) / 1_000_000
         var e = Estimates(state: state, avgDischarge_mA: avgDischarge_mA, avgCharge_mA: avgCharge_mA, batteryWatts: batteryWatts)
 
-        if let system = s.smcSystemWatts {
-            e.systemWatts = system
-        } else if !s.externalConnected, batteryWatts < 0 {
-            e.systemWatts = -batteryWatts
-        } else if let load = s.systemLoad_mW {
+        if let load = s.systemLoad_mW {
             e.systemWatts = Double(load) / 1000
         } else if batteryWatts < 0 {
             e.systemWatts = -batteryWatts
         }
-        if s.externalConnected, let input = s.smcAdapterWatts {
-            e.adapterInputWatts = input
-        } else if s.externalConnected, let input = s.systemPowerIn_mW {
+        if s.externalConnected, let input = s.systemPowerIn_mW {
             e.adapterInputWatts = Double(input) / 1000
         }
         if let design = s.design_mAh, design > 0, let capacity = s.nominal_mAh ?? s.fullCharge_mAh {
