@@ -1,5 +1,30 @@
 import Foundation
 final class PowerSourceTests {
+    func testSuccessiveLiveSamplesRefreshEveryBranch() {
+        var s = BatterySnapshot(percent: 80, isCharging: true, externalConnected: true,
+            voltage_mV: 12000, amperage_mA: 2000)
+        s.applyLivePower(battery: 0.9, adapter: 40, system: 15)
+        let first = Estimator.estimates(s, avgDischarge_mA: nil, avgCharge_mA: nil)
+        XCTAssertEqual(first.adapterInputWatts, 40)
+        XCTAssertEqual(first.batteryWatts, 25)
+        XCTAssertEqual(first.systemWatts, 15)
+        s.applyLivePower(battery: 0.9, adapter: 42, system: 16)
+        let next = Estimator.estimates(s, avgDischarge_mA: nil, avgCharge_mA: nil)
+        XCTAssertEqual(next.adapterInputWatts, 42)
+        XCTAssertEqual(next.batteryWatts, 26)
+        XCTAssertEqual(next.systemWatts, 16)
+    }
+    func testMissingSMCSensorUsesRegistryInsteadOfPPBR() {
+        var s = BatterySnapshot(percent: 80, isCharging: true, externalConnected: true,
+            voltage_mV: 12000, amperage_mA: 2000)
+        s.applyLivePower(battery: 0.9, adapter: 40, system: nil)
+        XCTAssertNil(s.liveBatteryWatts)
+        XCTAssertEqual(Estimator.estimates(s, avgDischarge_mA: nil, avgCharge_mA: nil).batteryWatts, 24)
+        s.applyLivePower(battery: 0.9, adapter: nil, system: 15)
+        XCTAssertNil(s.liveBatteryWatts)
+        XCTAssertEqual(s.effectiveAmperage_mA, 2000)
+    }
+
     func testUnplugIgnoresDelayedPositivePowerReadings() {
         var snapshot = BatterySnapshot(percent: 100, isCharging: true, externalConnected: false,
             voltage_mV: 12678, amperage_mA: -949)

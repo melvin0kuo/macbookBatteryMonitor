@@ -43,16 +43,13 @@ struct BatterySnapshot: Codable, Equatable {
     var smcAdapterWatts: Double?
     var smcSystemWatts: Double?
 
-    /// 電池功率（W，正值充入、負值放出），用 SMC 的「外部輸入 − 系統耗電」推算。
-    /// PPBR 在部分機型（例如 M1 MacBook Air）不是帶正負號的電池功率，充電時可能只讀到 1～2 W，
-    /// 用能量守恆推算才能讓輸入、系統、電池三者對得起來。剛拔電時 PDTR 可能還留著舊值，
-    /// 所以只在確認接電時才計入輸入；沒有 PSTR 時才退回 PPBR。
+    /// 電池功率（W，正值充入、負值放出），用同次 SMC 輸入與系統功率推算。
+    /// 缺少任一路時退回 Registry 電壓 × 電流，不使用不可靠的 PPBR。
     var liveBatteryWatts: Double? {
-        if let system = smcSystemWatts {
-            let input = externalConnected ? (smcAdapterWatts ?? 0) : 0
-            return input - system
-        }
-        return smcBatteryWatts
+        guard let system = smcSystemWatts else { return nil }
+        if !externalConnected { return -system }
+        guard let input = smcAdapterWatts else { return nil }
+        return input - system
     }
 
     /// 電量高於系統充電上限、macOS 暫停變壓器供電讓電池放電到上限（生效中的策略只在接電時存在）
