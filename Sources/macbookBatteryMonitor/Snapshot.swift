@@ -16,10 +16,7 @@ enum SnapshotCommand {
         store.refreshHealth()
         store.resolveUnpluggedDateIfNeeded()
         store.backfillHistory()
-        store.setHardwareSampling(active: true)
-        wait(1.1)
-        store.setHardwareSampling(active: true)
-        wait(1.1)
+        wait(3)
 
         let pages: [(String, () -> Void)] = [
             ("details", { ui.page = .main; ui.tab = .details }),
@@ -37,24 +34,9 @@ enum SnapshotCommand {
                 render(view, appearance: appearance, settle: name == "processes" ? 3 : 0.5,
                        to: dir.appendingPathComponent("panel-\(name)-\(suffix).png"))
             }
-            ui.page = .main
-            for chip in [false, true] {
-                ui.powerFlowLevel = chip ? .chip : .components
-                store.setHardwareSampling(active: true)
-                wait(1.1)
-                store.setHardwareSampling(active: true)
-                let view = RootView(store: store, settings: .shared, ui: ui)
-                    .background(Color(nsColor: .windowBackgroundColor))
-                    .environment(\.colorScheme, appearance == .aqua ? .light : .dark)
-                render(view, appearance: appearance, settle: 0.3,
-                       to: dir.appendingPathComponent("panel-hardware-\(chip ? "chip" : "components")-\(suffix).png"))
-            }
-            ui.powerFlowLevel = .overview
-            renderComponentFlows(appearance: appearance, directory: dir, suffix: suffix)
             renderPowerFlows(appearance: appearance, to: dir.appendingPathComponent("power-flows-\(suffix).png"))
             renderStatusIcons(appearance: appearance, to: dir.appendingPathComponent("icons-\(suffix).png"))
         }
-        store.setHardwareSampling(active: false)
         print("已輸出到 \(dir.path)")
     }
 
@@ -103,43 +85,6 @@ enum SnapshotCommand {
         .background(Color(nsColor: .windowBackgroundColor))
         .environment(\.colorScheme, appearance == .aqua ? .light : .dark)
         render(view, appearance: appearance, settle: 0.2, to: url)
-    }
-
-    private static func renderComponentFlows(appearance: NSAppearance.Name, directory: URL, suffix: String) {
-        let now = ProcessInfo.processInfo.systemUptime
-        let complete = ComponentPowerSample(uptime: now, interval: 1, backlightWatts: 3,
-                                            cpuWatts: 2, gpuWatts: 1, aneWatts: 0, systemWatts: 12, systemWindowAligned: true)
-        var missing = complete
-        missing.aneWatts = nil
-        var estimated = complete
-        estimated.cpuWatts = nil
-        estimated.systemWindowAligned = false
-        estimated.systemWindowEstimated = true
-        var sampling = complete
-        sampling.cpuWatts = nil
-        sampling.gpuWatts = nil
-        sampling.aneWatts = nil
-        sampling.sampling = true
-        let cases: [(String, ComponentPowerSample, Double)] = [
-            ("complete", complete, 12), ("missing", missing, 12), ("estimated", estimated, 12),
-            ("inconsistent", complete, 4), ("sampling", sampling, 12),
-        ]
-        for (name, sample, total) in cases {
-            for chip in [false, true] {
-                let ui = PanelState()
-                ui.powerFlowLevel = chip ? .chip : .components
-                let breakdown = PowerBreakdown.make(systemWatts: total, components: sample, now: now)
-                let view = PowerFlowView(s: BatterySnapshot(percent: 72),
-                    e: Estimates(state: .discharging, batteryWatts: -12, systemWatts: 12),
-                    breakdown: breakdown, ui: ui)
-                    .padding(14)
-                    .frame(width: 380)
-                    .background(Color(nsColor: .windowBackgroundColor))
-                    .environment(\.colorScheme, appearance == .aqua ? .light : .dark)
-                render(view, appearance: appearance, settle: 0.1,
-                       to: directory.appendingPathComponent("hardware-\(name)-\(chip ? "chip" : "components")-\(suffix).png"))
-            }
-        }
     }
 
     private static func renderStatusIcons(appearance: NSAppearance.Name, to url: URL) {

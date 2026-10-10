@@ -30,7 +30,7 @@ struct PanelView: View {
             if let s = store.snapshot, let e = store.estimates {
                 HeaderView(s: s, e: e, lowThreshold: settings.lowThreshold)
                 TimeCard(s: s, e: e, unpluggedAt: store.unpluggedAt, fullThreshold: settings.fullThreshold)
-                PowerFlowView(s: s, e: e, breakdown: store.breakdown, ui: ui)
+                PowerFlowView(s: s, e: e)
                 Picker("", selection: ui.binding(\.tab)) {
                     ForEach(BottomTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
                 }
@@ -51,8 +51,6 @@ struct PanelView: View {
             }
         }
         .padding(14)
-        .onAppear { store.setHardwareSampling(active: true) }
-        .onDisappear { store.setHardwareSampling(active: false) }
     }
 
     private func footer(updated: Date?) -> some View {
@@ -218,8 +216,8 @@ private struct TimeCard: View {
 
     /// 電量高於上限、macOS 正在放電時，估計多久會降到上限
     private func minutesToDrain(to limit: Int) -> Int? {
-        guard s.percent > limit, s.effectiveAmperage_mA < 0, let full = s.fullCharge_mAh else { return nil }
-        let current = e.avgDischarge_mA ?? Double(-s.effectiveAmperage_mA)
+        guard s.percent > limit, s.amperage_mA < 0, let full = s.fullCharge_mAh else { return nil }
+        let current = e.avgDischarge_mA ?? Double(-s.amperage_mA)
         guard current > 10 else { return nil }
         return Int((Double(full) * Double(s.percent - limit) / 100 / current * 60).rounded())
     }
@@ -228,7 +226,7 @@ private struct TimeCard: View {
         switch e.state {
         case .limitReached:
             let limit = s.chargeLimit?.limit ?? 100
-            if s.percent > limit, s.effectiveAmperage_mA < 0 {
+            if s.percent > limit, s.amperage_mA < 0 {
                 return "電量高於充電上限，macOS 正在讓電池慢慢放電到 \(limit)%，期間由變壓器和電池一起供電。"
             }
             if s.percent > limit {

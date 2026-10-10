@@ -1,8 +1,6 @@
 import Observation
 import SwiftUI
 
-enum PowerFlowLevel { case overview, components, chip }
-
 enum PanelPage {
     case main
     case settings
@@ -37,7 +35,6 @@ enum HistoryRange: String, CaseIterable, Identifiable {
 final class PanelState {
     /// 面板關閉時設為 false，畫面會換成空白，不再監聽任何資料
     var isVisible = false
-    var powerFlowLevel: PowerFlowLevel = .overview
     var page: PanelPage = .main
     var tab: BottomTab = .details
     var historyRange: HistoryRange = .day
