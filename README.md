@@ -1,5 +1,6 @@
-# 電池監控 macbookBatteryMonitor
+# 電池監控 Full — macbookBatteryMonitor
 
+Full 為完整功能版，提供動畫電力流向、可展開的硬體功耗細項、每秒主面板更新與耗電排行。
 macOS 選單列的電池資訊 App。
 選單列直接顯示電量，點開就能看到剩餘時間、健康度、充放電功率、充電上限、歷史曲線與耗電排行。
 
@@ -18,6 +19,8 @@ macOS 選單列的電池資訊 App。
 | [v1.0.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.0.0) | 靜態圖示與箭頭 | 約 1% | 約 0% | 想要最精簡、最省電 |
 
 > v1.1.0、v1.0.0 的 CPU 數據為 M1 MacBook Air 實測，面板開著時停在「耗電排行」分頁（含每 5 秒的 `top` 取樣）。
+
+亦可下載 [Full 1.2.0 的獨立建置](https://github.com/melvin0kuo/macbookBatteryMonitor/releases/tag/v1.2.0-full)。App 名稱為 `macbookBatteryMonitor.app`，沿用既有設定與電量歷史。
 
 ## 安裝
 
