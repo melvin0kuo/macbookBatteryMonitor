@@ -1,8 +1,7 @@
-# 電池監控 Full — macbookBatteryMonitor
+# 電池監控 macbookBatteryMonitor
 
-Full 為完整功能版，提供動畫電力流向、可展開的硬體功耗細項、每秒主面板更新與耗電排行。
-macOS 選單列的電池資訊 App。
-選單列直接顯示電量，點開就能看到剩餘時間、健康度、充放電功率、充電上限、歷史曲線與耗電排行。
+macOS 選單列的電池資訊 App，參考 [Stats](https://github.com/exelban/stats) 與 AlDente 的介面。
+選單列直接顯示電量，點開就能看到剩餘時間、健康度、電力流向（可展開到各硬體的耗電）、充電上限、歷史曲線與耗電排行。
 
 - **只讀取資訊**：不會更動任何充電設定，不需要管理員權限
 - **省電**：面板關閉時 CPU 約 0%，不會阻止系統睡眠
@@ -10,17 +9,15 @@ macOS 選單列的電池資訊 App。
 
 ## 下載與版本選擇
 
-到 [Releases](https://github.com/sgeric910601/macbookBatteryMonitor/releases) 下載編好的 App。v1.2.0 是完整版，可以看到各硬體的耗電；想要較精簡、較省電可以選舊版本：
+到 [Releases](https://github.com/sgeric910601/macbookBatteryMonitor/releases) 下載編好的 App。三個版本的電池資訊、通知與充電上限功能相同，差在電力流向與選單列：
 
-| 版本 | 電力流向 | 面板開著時 CPU | 面板關閉時 CPU | 適合 |
-|---|---|---|---|---|
-| [v1.2.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.2.0)（最新，完整版） | 動畫流向圖，可展開螢幕背光、晶片運算與 CPU／GPU／ANE，每秒更新 | 尚未實測 | 尚未實測（關閉時停止硬體取樣） | 想看各硬體的耗電 |
-| [v1.1.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.1.0) | 動畫 Sankey 流向圖，依功率分流 | 約 3% | 約 0% | 想要較生動的介面 |
-| [v1.0.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.0.0) | 靜態圖示與箭頭 | 約 1% | 約 0% | 想要最精簡、最省電 |
+| 版本 | 電力流向 | 選單列 | 面板開著時 CPU | 面板關閉時 CPU | 適合 |
+|---|---|---|---|---|---|
+| [v1.2.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.2.0)（最新，Full 完整版） | 動畫流向圖，可展開螢幕背光、晶片運算與 CPU／GPU／ANE，每秒更新 | 多一種「圖示內百分比 + 剩餘時間」 | 約 3%（展開硬體細項約 4.5%） | 約 0% | 想看各硬體的耗電 |
+| [v1.1.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.1.0) | 動畫 Sankey 流向圖，依功率分流 | 四種顯示方式 | 約 3% | 約 0% | 想要較生動的介面 |
+| [v1.0.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.0.0) | 靜態圖示與箭頭 | 四種顯示方式 | 約 1% | 約 0% | 想要最精簡、最省電 |
 
-> v1.1.0、v1.0.0 的 CPU 數據為 M1 MacBook Air 實測，面板開著時停在「耗電排行」分頁（含每 5 秒的 `top` 取樣）。
-
-亦可下載 [Full 1.2.0 的獨立建置](https://github.com/melvin0kuo/macbookBatteryMonitor/releases/tag/v1.2.0-full)。App 名稱為 `macbookBatteryMonitor.app`，沿用既有設定與電量歷史。
+> CPU 數據為 M1 MacBook Air 實測：面板開著時停在「耗電排行」分頁（含每 5 秒的 `top` 取樣）；v1.2.0 另測了展開晶片細項、每秒取樣的情況。
 
 ## 安裝
 
@@ -40,17 +37,17 @@ macOS 選單列的電池資訊 App。
 
 ## 功能
 
-**選單列**
-- 電池圖示 + 百分比（可切換成只有圖示、只有百分比、剩餘時間）
+**選單列**（設定 → 選單列 → 顯示方式）
+- 圖示 + 百分比、只有圖示、只有百分比、圖示 + 剩餘時間
+- 圖示內百分比 + 剩餘時間（v1.2.0）：電量顯示在電池圖示裡，右側是剩餘／充滿時間；沒有時間資料顯示「—」，滿電、接電未充電、到達上限時分別顯示「已充飽」、「接電」、「已達上限」
 - 充電中顯示閃電、接電未充電顯示插頭、低電量變紅
-- 可選「圖示內百分比 + 剩餘時間」：電池內顯示百分比，右側顯示剩餘／充滿時間；無時間資料顯示「—」，滿電顯示「已充飽」
 
 **面板**
 - 電量、充放電狀態、剩餘時間／充滿時間（有充電上限時顯示充到上限的時間）
 - 預估用到 0% 與**用到 10%** 的時間：系統預估 + 依近 3 分鐘平均耗電推算
 - 已使用電池多久（這次拔掉電源後）
 - 電力流向：變壓器、系統、電池之間的瓦數
-- 系統細項：分流顯示螢幕背光、晶片運算、其他（估算）；點晶片展開 CPU／GPU／ANE
+- 系統細項（v1.2.0）：展開成螢幕背光、晶片運算、其他（估算）；點晶片再展開 CPU／GPU／ANE
 - 詳細資訊：電壓、電流、電池功率、系統耗電、系統預估、溫度、健康度、循環次數、容量（mAh）、變壓器、充電上限
 - 電量歷史圖表（1 小時／24 小時／7 天，第一次啟動會用 `pmset` 紀錄回填過去幾天）
 - 耗電排行：前 5 名 App，同一個 App 的子程序會合併
@@ -64,41 +61,36 @@ macOS 選單列的電池資訊 App。
 
 - **左鍵**點選單列圖示：打開面板
 - **右鍵**：打開面板、設定、結束
+- **電力流向**（v1.2.0）：點「系統」展開硬體細項，點「晶片運算」再展開 CPU／GPU／ANE
 - **設定**：選單列顯示方式、通知門檻、開機自啟動；充電上限由 macOS 控制，App 只讀取顯示，可從設定頁跳到系統設定修改
 
-## 從原始碼編譯
+## 硬體功耗（v1.2.0）
 
-只需要 Command Line Tools（`xcode-select --install`），不需要 Xcode。
+面板主頁每 1 秒取樣一次，關閉面板、進入設定頁或睡眠時停止取樣。讀取不需要管理員權限。
 
-```bash
-git clone https://github.com/sgeric910601/macbookBatteryMonitor.git
-cd macbookBatteryMonitor
-git checkout v1.2.0          # 或 v1.1.0、v1.0.0，不指定就是最新的開發版
-./build.sh                   # 產生 build/macbookBatteryMonitor.app
-./build.sh install           # 安裝到 /Applications 並啟動
-```
+- **系統總功耗**：優先讀取 SMC `PSTR`，不可用時退回 IORegistry 的 `SystemLoad`
+- **螢幕背光**：讀取 SMC 感測器
+- **CPU／GPU／ANE**：IOReport Energy Model 的能量差除以實際取樣時間；首次取樣只建立基準
+- **其他（估算）**：總功耗扣掉背光與已取得的晶片功耗後的差值；缺晶片細項時改標示「未分類（估算）」，裡面也包含缺少的項目
+- 晶片合計只涵蓋取得的 CPU、GPU、ANE，不代表完整 SoC 功耗，也不含外接螢幕
 
-## 硬體功耗
-面板主頁每 1 秒取樣一次；實際硬體與系統能量模型可能以較慢的頻率更新。CPU／GPU／ANE 是能量差除以實際時間窗的系統模型估算；系統總功耗優先讀取 SMC PSTR，背光讀取 SMC 感測器；兩者以相鄰讀值平均近似取樣窗。晶片合計只涵蓋取得的 CPU、GPU、ANE，不代表完整 SoC 功耗；不含外接螢幕。
+IOReport 是系統私有介面，可用性依晶片與 macOS 版本而異，讀不到的項目顯示「—」：
 
-缺通道顯示「—」，首次取樣建立基準，CPU 能量計數未前進時顯示 0 W（代表取樣能量差為零）。使用 SMC PSTR 時，將總功耗扣除背光與已取得的晶片功耗，顯示非負差值估算；缺晶片細項時改標示「未分類（估算）」，其中包含缺失項目，不能視為純粹的其他硬體耗電。SMC 與能量模型的實際更新窗可能不同。PSTR 不可用時退回 SystemLoad；此來源沒有公開量測時間戳，故不計算殘差。
+| 機型 | 系統總功耗 | 背光 | GPU | CPU | ANE |
+|---|---|---|---|---|---|
+| M2 Pro | ✓ | ✓ | ✓ | 顯示 0 W（通道未持續更新） | 閒置時 0 W |
+| M1 MacBook Air | ✓ | — | ✓ | 顯示 0 W（通道未持續更新） | — |
 
-讀取不需管理員權限。IOReport 為系統私有介面，可用性依晶片與 macOS 版本而異；目前只在 M2 Pro 驗證 PSTR 總功耗、背光與 GPU 讀值，CPU 通道在目前系統未持續更新，依能量差顯示 0 W。ANE 閒置時可為 0 W。
-
-## 測試
-```bash
-Scripts/test-power.sh  # Command Line Tools 可執行的換算、生命週期與動畫測試
-```
+插拔電源時，總覽優先使用 SMC `PPBR`（電池功率）、`PDTR`（外部輸入）與 `PSTR`（系統功耗），避免重新接電後 Registry 的電流和輸入功率停留在舊狀態；電流由電池功率與電壓換算並以 ≈ 標示。插拔通知後會在 1、3、6 秒各重讀一次，之後回到正常更新間隔。
 
 ## 省電設計
 
-- 面板主頁每 1 秒更新電池與功耗；關閉面板、進入設定或睡眠時停止硬體細項取樣
 - 面板關著時每 30 秒讀一次電池；插拔電源靠系統通知即時更新，不靠輪詢
-- 選單列圖示只有在數字或狀態改變時才重畫
-- SMC 溫度只在面板開著時讀
+- 選單列圖示只有在數字、時間或狀態改變時才重畫
 - 面板每次打開才建立，關閉就連同視窗整個釋放，背景沒有任何畫面在更新
+- 硬體細項與 SMC 溫度只在面板開著時讀
 - 耗電排行（`top`）只在面板開著且停在該分頁時，每 5 秒取樣一次
-- v1.1.0 起的流向動畫由 Core Animation 合成（不逐幀更新 SwiftUI），只在面板開著且該線路有供電時播放；支援「減少動態效果」
+- 流向動畫由 Core Animation 合成（不逐幀更新 SwiftUI），只在面板開著且該線路有供電時播放；支援「減少動態效果」
 - 歷史紀錄每 15 分鐘寫一次檔，睡眠前和結束時也會存
 - 健康度（`system_profiler`）每 6 小時查一次
 
@@ -131,26 +123,41 @@ Scripts/test-power.sh  # Command Line Tools 可執行的換算、生命週期與
    defaults delete com.kuan.batterymonitor
    ```
 
-## 發布
+## 從原始碼編譯
 
-GitHub Actions 會在 macOS 上測試、編譯、打包並建立 Release，說明取自 `.github/release-notes/<tag>.md`（第一行為標題）：
+只需要 Command Line Tools（`xcode-select --install`），不需要 Xcode。
 
-- 把 `Resources/Info.plist` 的版本改成新版本，並新增對應的 `.github/release-notes/v<版本>.md`，推到 main 後會自動建立 `v<版本>` tag 並發布
-- 也可以直接推送 tag：`git tag v1.2.0 && git push origin v1.2.0`
+```bash
+git clone https://github.com/sgeric910601/macbookBatteryMonitor.git
+cd macbookBatteryMonitor
+git checkout v1.2.0          # 或 v1.1.0、v1.0.0，不指定就是最新的開發版
+./build.sh                   # 產生 build/macbookBatteryMonitor.app
+./build.sh install           # 安裝到 /Applications 並啟動
+```
 
 ## 開發
+
+```bash
+Scripts/test-power.sh    # 換算、供電狀態切換、生命週期與動畫測試（Command Line Tools 可執行）
+```
 
 除錯用參數：
 
 ```bash
 APP=/Applications/macbookBatteryMonitor.app/Contents/MacOS/macbookBatteryMonitor
-$APP --dump-hardware     # 每秒輸出硬體功耗，共五筆 JSON
-$APP --selftest-hardware # 展開晶片、切換設定並確認取樣停止
 $APP --dump              # 目前讀到的資料印成 JSON
+$APP --dump-hardware     # 每秒輸出硬體功耗，共五筆 JSON
 $APP --snapshot <資料夾>  # 在螢幕外把面板各分頁畫成 PNG
 $APP --selftest-panel    # 自動開面板 20 秒再關，量測耗電用
+$APP --selftest-hardware # 展開晶片、切換設定頁，確認取樣會停止與恢復
 ```
 
 只裝 Command Line Tools 時沒有 SwiftUI 的 macro 外掛，所以程式裡不用 `@State`，介面狀態集中在 `PanelState`。
 
-插拔電源時，總覽優先使用 SMC PPBR（電池功率）、PDTR（外部輸入）與 PSTR（系統功耗），避免重插後 Registry 電流和輸入功率仍停留在舊狀態。SMC 可用時，電流由電池功率及電壓換算並以 ≈ 標示；原始電流保留於診斷輸出。插拔通知後會在 1、3、6 秒短暫重讀，之後回到正常更新間隔。
+## 發布
+
+GitHub Actions 會在 macOS 上測試、編譯、打包並建立 Release，標題與說明取自 `.github/release-notes/<tag>.md`（第一行為標題）：
+
+- 把 `Resources/Info.plist` 的版本改成新版本，並新增對應的 `.github/release-notes/v<版本>.md`，推到 main 後會自動建立 `v<版本>` tag 並發布
+- 也可以直接推送 tag，例如 `git tag v1.3.0 && git push origin v1.3.0`
+- 同一個版本已經有 Release 時不會重複發布；要更新既有版本，需手動替換附件與說明
