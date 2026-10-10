@@ -38,12 +38,48 @@ struct BatterySnapshot: Codable, Equatable {
     var serial: String?
     /// 系統設定的充電上限（沒設定時為 nil）
     var chargeLimit: ChargeLimit?
+
+    var smcBatteryWatts: Double?
+    var smcAdapterWatts: Double?
+    var smcSystemWatts: Double?
+
+    /// SMC 功率換算的近似電流；原始 Registry 電流保留供診斷。
+    var effectiveAmperage_mA: Int {
+        guard let watts = smcBatteryWatts, voltage_mV > 0 else { return amperage_mA }
+        if !externalConnected, watts > 0 { return min(0, amperage_mA) }
+        return Int((watts * 1_000_000 / Double(voltage_mV)).rounded())
+    }
+
+    mutating func applyLivePower(battery: Double?, adapter: Double?, system: Double?) {
+        func valid(_ value: Double?, signed: Bool = false) -> Double? {
+            guard let value, value.isFinite, abs(value) < 500, signed || value >= 0 else { return nil }
+            return value
+        }
+        smcBatteryWatts = valid(battery, signed: true)
+        smcAdapterWatts = valid(adapter)
+        smcSystemWatts = valid(system)
+    }
+
+    /// AC／滿電旗標可能在停止供電後仍保留；只在有明確零輸入且放電時覆寫。
+    mutating func reconcilePowerSource(inputMilliwatts: Int?) {
+        if externalConnected, let input = smcAdapterWatts, input > 0.5 {
+            // 已接上時，SMC 可排除 Registry 零輸入的延遲；不覆寫明確的拔除狀態。
+        } else if !isCharging, effectiveAmperage_mA < -50,
+                  (smcAdapterWatts.map { $0 <= 0.5 } ?? (inputMilliwatts == 0)) {
+            externalConnected = false
+        }
+        if !externalConnected {
+            isCharging = false
+            adapter = nil
+            systemPowerIn_mW = nil
+        }
+    }
 }
 
 enum BatteryReader {
     private static let smc = SMC()
 
-    static func read(includeTemperature: Bool = true) -> BatterySnapshot? {
+    static func read(includeTemperature: Bool = true, includeLivePower: Bool = true) -> BatterySnapshot? {
         guard let reg = registryProperties() else { return nil }
         let data = reg["BatteryData"] as? [String: Any] ?? [:]
         let telemetry = reg["PowerTelemetryData"] as? [String: Any] ?? [:]
@@ -65,7 +101,9 @@ enum BatteryReader {
             s.percent = cur * 100 / max
         }
         s.isCharging = bool(ps["Is Charging"]) ?? bool(reg["IsCharging"]) ?? false
-        if let state = ps["Power Source State"] as? String {
+        if let connected = bool(reg["ExternalConnected"]) {
+            s.externalConnected = connected
+        } else if let state = ps["Power Source State"] as? String {
             s.externalConnected = state == "AC Power"
         } else {
             s.externalConnected = bool(reg["ExternalConnected"]) ?? false
@@ -86,6 +124,10 @@ enum BatteryReader {
         s.notChargingReason = int(charger["NotChargingReason"]) ?? int(reg["NotChargingReason"])
         s.systemLoad_mW = positive(int(telemetry["SystemLoad"]))
         s.systemPowerIn_mW = positive(int(telemetry["SystemPowerIn"]))
+        if includeLivePower {
+            s.applyLivePower(battery: smc?.read("PPBR"), adapter: smc?.read("PDTR"), system: smc?.read("PSTR"))
+        }
+        s.reconcilePowerSource(inputMilliwatts: int(telemetry["SystemPowerIn"]))
         s.lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         s.serial = reg["Serial"] as? String
         s.chargeLimit = ChargeLimitReader.current()

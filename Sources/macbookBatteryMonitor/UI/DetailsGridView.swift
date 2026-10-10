@@ -9,7 +9,7 @@ struct DetailsGridView: View {
         Card(expand: true) {
             Grid(alignment: .leading, horizontalSpacing: 10, verticalSpacing: 9) {
                 row("電壓", String(format: "%.2f V", Double(s.voltage_mV) / 1000),
-                    "電流", "\(s.amperage_mA.formatted()) mA")
+                    "電流", "\(s.smcBatteryWatts == nil ? "" : "≈")\(s.effectiveAmperage_mA.formatted()) mA")
                 row("電池功率", Format.watts(abs(e.batteryWatts)),
                     "系統耗電", Format.watts(e.systemWatts))
                 row("系統預估", systemEstimateText,
