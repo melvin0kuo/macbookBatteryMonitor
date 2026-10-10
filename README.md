@@ -153,11 +153,3 @@ $APP --selftest-hardware # 展開晶片、切換設定頁，確認取樣會停�
 ```
 
 只裝 Command Line Tools 時沒有 SwiftUI 的 macro 外掛，所以程式裡不用 `@State`，介面狀態集中在 `PanelState`。
-
-## 發布
-
-GitHub Actions 會在 macOS 上測試、編譯、打包並建立 Release，標題與說明取自 `.github/release-notes/<tag>.md`（第一行為標題）：
-
-- 把 `Resources/Info.plist` 的版本改成新版本，並新增對應的 `.github/release-notes/v<版本>.md`，推到 main 後會自動建立 `v<版本>` tag 並發布
-- 也可以直接推送 tag，例如 `git tag v1.3.0 && git push origin v1.3.0`
-- 同一個版本已經有 Release 時不會重複發布；要更新既有版本，需手動替換附件與說明
