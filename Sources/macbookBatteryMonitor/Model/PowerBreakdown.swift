@@ -9,6 +9,7 @@ struct PowerBreakdown: Equatable {
     var aneWatts: Double?
     var chipWatts: Double?
     var otherWatts: Double?
+    var otherIncludesMissing = false
     var status: Status
 
     static func make(systemWatts: Double?, components: ComponentPowerSample, now: TimeInterval) -> Self {
@@ -29,20 +30,25 @@ struct PowerBreakdown: Equatable {
         result.chipWatts = chips.isEmpty ? nil : chips.reduce(0, +)
         guard !components.sampling else { result.status = .sampling; return result }
         guard let system = result.systemWatts, let backlight = result.backlightWatts,
-              let chip = result.chipWatts, chips.count == 3 else { return result }
-        guard components.systemWindowAligned else { result.status = .inconsistent; return result }
+              let chip = result.chipWatts else { return result }
+        guard components.systemWindowAligned || components.systemWindowEstimated else {
+            if chips.count == 3 { result.status = .inconsistent }
+            return result
+        }
+        guard chips.count == 3 || components.systemWindowEstimated else { return result }
         let residual = system - backlight - chip
         guard residual >= 0 else { result.status = .inconsistent; return result }
         result.otherWatts = residual
-        result.status = .available
+        result.otherIncludesMissing = chips.count != 3
+        result.status = result.otherIncludesMissing ? .incomplete : .available
         return result
     }
 
     var message: String {
         switch status {
-        case .available: return "晶片＝CPU＋GPU＋ANE・其他為差值估算"
+        case .available: return "其他為差值估算・感測器取樣窗可能不同"
         case .sampling: return "取樣中・正在建立晶片能量基準"
-        case .incomplete: return "資料不完整・未取得的項目顯示 —"
+        case .incomplete: return otherIncludesMissing ? "未分類包含未取得的晶片功耗・差值估算" : "資料不完整・未取得的項目顯示 —"
         case .inconsistent: return "取樣不同步・暫不計算其他功耗"
         case .stale: return "等待新的功耗樣本"
         }

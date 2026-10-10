@@ -1,5 +1,15 @@
 import Foundation
 final class PowerBreakdownTests {
+    func testEstimatedResidualIncludesMissingCPU() {
+        let sample = ComponentPowerSample(uptime: 10, interval: 1, backlightWatts: 3,
+            gpuWatts: 1, aneWatts: 0, systemWindowEstimated: true)
+        let result = PowerBreakdown.make(systemWatts: 12, components: sample, now: 10)
+        XCTAssertEqual(result.otherWatts, 8)
+        XCTAssertNil(result.cpuWatts)
+        XCTAssertTrue(result.otherIncludesMissing)
+        XCTAssertEqual(result.status, .incomplete)
+        XCTAssertNil(PowerBreakdown.make(systemWatts: 2, components: sample, now: 10).otherWatts)
+    }
     func testCompleteBreakdown() {
         let sample = ComponentPowerSample(uptime: 10, interval: 1, backlightWatts: 3, cpuWatts: 2, gpuWatts: 1, aneWatts: 0, systemWindowAligned: true)
         let result = PowerBreakdown.make(systemWatts: 12, components: sample, now: 10)

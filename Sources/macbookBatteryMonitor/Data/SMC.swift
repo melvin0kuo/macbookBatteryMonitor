@@ -1,7 +1,7 @@
 import Foundation
 import IOKit
 
-/// 最小的唯讀 SMC client，只用來讀電池溫度。不會寫入任何 key。
+/// 唯讀 SMC client，讀取電池溫度與功耗感測器。不會寫入任何 key。
 final class SMC {
     private struct KeyData {
         typealias Bytes = (

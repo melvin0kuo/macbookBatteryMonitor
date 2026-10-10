@@ -111,13 +111,17 @@ enum SnapshotCommand {
                                             cpuWatts: 2, gpuWatts: 1, aneWatts: 0, systemWatts: 12, systemWindowAligned: true)
         var missing = complete
         missing.aneWatts = nil
+        var estimated = complete
+        estimated.cpuWatts = nil
+        estimated.systemWindowAligned = false
+        estimated.systemWindowEstimated = true
         var sampling = complete
         sampling.cpuWatts = nil
         sampling.gpuWatts = nil
         sampling.aneWatts = nil
         sampling.sampling = true
         let cases: [(String, ComponentPowerSample, Double)] = [
-            ("complete", complete, 12), ("missing", missing, 12),
+            ("complete", complete, 12), ("missing", missing, 12), ("estimated", estimated, 12),
             ("inconsistent", complete, 4), ("sampling", sampling, 12),
         ]
         for (name, sample, total) in cases {

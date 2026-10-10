@@ -58,9 +58,9 @@ final class IOReportReader {
                   let unit = unit(channel)?.takeUnretainedValue() as String? else { continue }
             let component: String
             switch label {
-            case "CPU Energy": component = "cpu"
-            case "GPU Energy": component = "gpu"
-            case "ANE0", "ANE Energy": component = "ane"
+            case let label where label.hasSuffix("CPU Energy"): component = "cpu"
+            case let label where label.hasSuffix("GPU Energy"): component = "gpu"
+            case let label where label.hasPrefix("ANE"): component = "ane"
             default: continue
             }
             if let joules = EnergyCounter.joules(Double(value(channel, 0)), unit: unit) {

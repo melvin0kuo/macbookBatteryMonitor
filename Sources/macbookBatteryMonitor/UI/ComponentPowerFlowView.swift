@@ -15,7 +15,7 @@ struct ComponentPowerFlowView: View {
         ] : [
             ComponentRow(name: "螢幕背光", symbol: "display", watts: breakdown.backlightWatts),
             ComponentRow(name: "晶片運算", symbol: "cpu", watts: breakdown.chipWatts),
-            ComponentRow(name: "其他（估算）", symbol: "ellipsis", watts: breakdown.otherWatts),
+            ComponentRow(name: breakdown.otherIncludesMissing ? "未分類（估算）" : "其他（估算）", symbol: "ellipsis", watts: breakdown.otherWatts),
         ]
     }
 
@@ -56,7 +56,7 @@ struct ComponentPowerFlowView: View {
                 .font(.system(size: 9))
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .help("背光來自 SMC 感測器；CPU、GPU、ANE 來自系統能量模型估算。晶片合計不是完整 SoC 電源軌功耗。")
+                .help("總功耗及背光來自 SMC 感測器；差值只作近似估算，未分類包含缺值項目。CPU、GPU、ANE 來自系統能量模型估算。晶片合計不是完整 SoC 電源軌功耗。")
         }
     }
 

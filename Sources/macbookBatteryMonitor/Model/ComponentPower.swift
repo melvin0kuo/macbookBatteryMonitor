@@ -62,6 +62,9 @@ struct ComponentPowerSample: Equatable, Codable {
     var systemWatts: Double?
     // SystemLoad 沒有公開時間戳；只有經驗證同步的資料才能計算殘差。
     var systemWindowAligned = false
+    // SMC 兩次端點讀值平均，僅近似同一取樣窗。
+    var systemWindowEstimated = false
+    var systemPowerSource: String?
     var sampling = false
     var chipComplete: Bool { cpuWatts != nil && gpuWatts != nil && aneWatts != nil }
     var chipWatts: Double? {

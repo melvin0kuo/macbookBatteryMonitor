@@ -4,9 +4,11 @@ final class HardwarePowerReader {
     private let report = IOReportReader()
     private let smc = SMC()
     private var delta = EnergyDelta()
+    private var previousSystem: Double?
+    private var previousBacklight: Double?
     private var previousTime: TimeInterval?
 
-    func reset() { delta.reset(); previousTime = nil }
+    func reset() { delta.reset(); previousTime = nil; previousSystem = nil; previousBacklight = nil }
 
     func sample() -> ComponentPowerSample {
         let now = ProcessInfo.processInfo.systemUptime
@@ -18,12 +20,22 @@ final class HardwarePowerReader {
             guard let value, value.isFinite, value >= 0, value < 500 else { return nil }
             return value
         }
-        let battery = BatteryReader.read(includeTemperature: false)
-        let system = battery?.systemLoad_mW.map { Double($0) / 1000 }
+        let system = valid(smc?.read("PSTR"))
+        let backlight = valid(smc?.read("PDBR")) ?? valid(smc?.read("PBwo"))
+        let windowValid = interval.map { $0 > 0 && $0 <= 3 } ?? false
+        let estimated = windowValid && system != nil && previousSystem != nil
+            && backlight != nil && previousBacklight != nil
+        let systemAverage = estimated ? (system! + previousSystem!) / 2 : system
+        let backlightAverage = estimated ? (backlight! + previousBacklight!) / 2 : backlight
+        previousSystem = system
+        previousBacklight = backlight
+        let fallback = BatteryReader.read(includeTemperature: false)?.systemLoad_mW.map { Double($0) / 1000 }
         return ComponentPowerSample(uptime: now, interval: interval,
-            backlightWatts: valid(smc?.read("PDBR")) ?? valid(smc?.read("PBwo")),
+            backlightWatts: backlightAverage,
             cpuWatts: EnergyCounter.updatedCPUWatts(watts["cpu"]), gpuWatts: watts["gpu"], aneWatts: watts["ane"],
-            systemWatts: valid(system), sampling: interval == nil && !energy.isEmpty)
+            systemWatts: systemAverage ?? valid(fallback), systemWindowEstimated: estimated,
+            systemPowerSource: system != nil ? "SMC PSTR" : "Battery SystemLoad",
+            sampling: interval == nil && !energy.isEmpty)
     }
 }
 
