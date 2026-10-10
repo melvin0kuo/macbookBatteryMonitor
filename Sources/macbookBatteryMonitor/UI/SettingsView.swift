@@ -99,7 +99,7 @@ struct SettingsView: View {
             }
 
             HStack {
-                Text("電池監控 1.0")
+                Text("電池監控 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")")
                     .font(.caption)
                     .foregroundStyle(.tertiary)
                 Spacer()
