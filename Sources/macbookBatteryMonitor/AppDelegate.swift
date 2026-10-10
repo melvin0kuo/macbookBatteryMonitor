@@ -15,10 +15,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var timers: [Timer] = []
     /// 上次畫到選單列的內容，沒變就不重畫
     private var lastStatusKey = ""
+    private var sleeping = false
+    private var powerTransitionTask: Task<Void, Never>?
 
     /// 面板關著時的更新間隔。插拔電源由 IOPS 通知即時更新，不靠這個計時器
     private static let idleInterval: TimeInterval = 30
-    private static let openInterval: TimeInterval = 2
+    private static let openInterval: TimeInterval = 1
     private static let processInterval: TimeInterval = 5
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -55,11 +57,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     /// 開發用：`--selftest-panel` 會打開面板（耗電排行分頁）20 秒後自動關閉，用來確認關閉後取樣會停
     private func runPanelSelfTestIfRequested() {
-        guard CommandLine.arguments.contains("--selftest-panel") else { return }
+        let hardware = CommandLine.arguments.contains("--selftest-hardware")
+        guard hardware || CommandLine.arguments.contains("--selftest-panel") else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             guard let self else { return }
-            ui.tab = .processes
+            ui.tab = hardware ? .details : .processes
+            ui.powerFlowLevel = hardware ? .components : .overview
             showPopover(page: .main)
+            if hardware {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+                    self?.ui.powerFlowLevel = .chip
+                    print("selftest: chip expanded")
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+                    self?.ui.page = .settings
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak self] in
+                    print("selftest: settings sampling stopped \(self?.store.componentPower == nil)")
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 11) { [weak self] in
+                    self?.ui.page = .main
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 14) { [weak self] in
+                    print("selftest: hardware sampling resumed \(self?.store.componentPower != nil)")
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 22) { [weak self] in
+                    print("selftest: closed sampling stopped \(self?.store.componentPower == nil)")
+                }
+            }
             print("selftest: opened \(popover?.contentSize ?? .zero)")
             DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
                 self?.popover?.performClose(nil)
@@ -76,6 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private func refresh() {
         store.refresh()
+        store.setHardwareSampling(active: ui.isVisible && ui.page == .main && !sleeping)
         updateStatusItem()
         if let s = store.snapshot, let e = store.estimates {
             Notifier.shared.evaluate(s, state: e.state, settings: settings)
@@ -105,16 +131,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         guard let source = IOPSNotificationCreateRunLoopSource({ context in
             guard let context else { return }
             let delegate = Unmanaged<AppDelegate>.fromOpaque(context).takeUnretainedValue()
-            MainActor.assumeIsolated { delegate.refresh() }
+            MainActor.assumeIsolated { delegate.powerSourceChanged() }
         }, context)?.takeRetainedValue() else { return }
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+    }
+
+    /// 插拔通知可能比 Registry／SMC 資料早到；短暫重讀後恢復正常間隔。
+    private func powerSourceChanged() {
+        powerTransitionTask?.cancel()
+        refresh()
+        powerTransitionTask = Task { [weak self] in
+            for delay in [1, 2, 3] {
+                do { try await Task.sleep(for: .seconds(delay)) } catch { return }
+                guard let self, !sleeping else { return }
+                refresh()
+            }
+        }
     }
 
     @objc private func willSleep() {
+        sleeping = true
+        powerTransitionTask?.cancel()
+        store.setHardwareSampling(active: false)
         store.history.save()
     }
 
     @objc private func didWake() {
+        sleeping = false
         refresh()
         store.recordHistory()
     }
@@ -241,6 +284,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) {
         store.panelVisible = false
+        store.setHardwareSampling(active: false)
         processTimer?.invalidate()
         processTimer = nil
         scheduleRefresh(every: Self.idleInterval)
