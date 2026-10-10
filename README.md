@@ -135,6 +135,8 @@ Scripts/test-power.sh  # Command Line Tools 可執行的換算、生命週期與
 git tag v1.2.0 && git push origin v1.2.0
 ```
 
+也可以在 GitHub 的 Actions →「編譯與發布」→ Run workflow 填入 tag，會在 main 最新的 commit 上建立 tag 並發布。
+
 ## 開發
 
 除錯用參數：
