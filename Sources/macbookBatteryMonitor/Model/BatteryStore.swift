@@ -19,6 +19,8 @@ final class BatteryStore {
     @ObservationIgnored private var avgCharge: Double?
     @ObservationIgnored private var lastDate: Date?
     @ObservationIgnored private var lastState: PowerState?
+    /// 這次接上電源的時間（判斷充電上限是否已被關掉用）
+    @ObservationIgnored private var pluggedSince: Date?
     @ObservationIgnored private var loadingProcesses = false
     /// 面板開著才允許跑 top，避免關掉後還在背景取樣
     @ObservationIgnored var panelVisible = false
@@ -29,11 +31,17 @@ final class BatteryStore {
 
     func refresh() {
         // 溫度要另外問 SMC，只有面板開著時才需要
-        guard let s = BatteryReader.read(includeTemperature: panelVisible) else {
+        guard var s = BatteryReader.read(includeTemperature: panelVisible) else {
             snapshot = nil
             estimates = nil
             return
         }
+        if s.externalConnected {
+            if pluggedSince == nil { pluggedSince = s.date }
+        } else {
+            pluggedSince = nil
+        }
+        s.chargeLimit = ChargeLimitReader.resolve(externalConnected: s.externalConnected, pluggedSince: pluggedSince)
         let state = Estimator.state(s)
         let dt = lastDate.map { s.date.timeIntervalSince($0) } ?? 0
 

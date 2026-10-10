@@ -50,9 +50,14 @@ struct SettingsView: View {
                     HStack {
                         Text("系統充電上限")
                         Spacer()
-                        Text(ChargeLimitReader.current().map { "\($0.limit)%" } ?? "未設定")
+                        Text(ChargeLimitReader.lastKnown().map { "\($0.limit)%" } ?? "未設定")
                             .foregroundStyle(.secondary)
                             .monospacedDigit()
+                    }
+                    if ChargeLimitReader.lastKnown()?.active == false {
+                        Text("用電池時 macOS 不會套用上限，數值是上次接電時讀到的。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                     Text("充電上限由 macOS 控制，這個 App 只讀取並顯示。")
                         .font(.caption)

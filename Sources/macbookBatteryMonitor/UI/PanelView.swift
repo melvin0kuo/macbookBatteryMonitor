@@ -154,8 +154,8 @@ private struct TimeCard: View {
                 }
                 GridRow {
                     Text("系統預估").foregroundStyle(.secondary)
-                    Text(Format.duration(e.systemToEmpty))
-                    Text(to10(e.systemTo10)).fontWeight(.semibold)
+                    Text(e.systemToEmpty == nil ? "計算中…" : Format.duration(e.systemToEmpty))
+                    Text(e.systemTo10 == nil && s.percent > Estimator.reservePercent ? "計算中…" : to10(e.systemTo10)).fontWeight(.semibold)
                 }
                 GridRow {
                     Text("依目前耗電").foregroundStyle(.secondary)

@@ -12,10 +12,11 @@ enum DumpCommand {
     }
 
     static func run() {
-        guard let s = BatteryReader.read() else {
+        guard var s = BatteryReader.read() else {
             print(#"{"error": "找不到電池"}"#)
             return
         }
+        s.chargeLimit = ChargeLimitReader.resolve(externalConnected: s.externalConnected, pluggedSince: nil)
         let current = Double(abs(s.amperage_mA))
         let e = Estimator.estimates(
             s,

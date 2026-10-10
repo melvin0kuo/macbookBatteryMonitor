@@ -11,6 +11,8 @@ struct DetailsGridView: View {
                 row("電壓", String(format: "%.2f V", Double(s.voltage_mV) / 1000),
                     "電流", "\(s.amperage_mA.formatted()) mA")
                 row("電池功率", Format.watts(abs(e.batteryWatts)),
+                    "系統耗電", Format.watts(e.systemWatts))
+                row("系統預估", systemEstimateText,
                     "溫度", s.temperature_C.map { String(format: "%.1f °C", $0) } ?? "—")
                 row("健康度", health?.maxCapacityPercent.map { "\($0)%" } ?? "—",
                     "容量推算", e.healthComputed.map { String(format: "%.1f%%", $0) } ?? "—")
@@ -24,6 +26,18 @@ struct DetailsGridView: View {
                     "充電上限", s.chargeLimit.map { "\($0.limit)%" } ?? "未設定")
             }
             .font(.callout)
+        }
+    }
+
+    /// macOS 自己的預估：用電池時是剩餘時間，充電時是充滿時間
+    private var systemEstimateText: String {
+        switch e.state {
+        case .discharging:
+            return e.systemToEmpty.map { Format.duration($0) } ?? "計算中…"
+        case .charging:
+            return e.toFull.map { "充滿 \(Format.clock($0) ?? "")" } ?? "計算中…"
+        case .pluggedIdle, .full, .limitReached:
+            return "接電中"
         }
     }
 
