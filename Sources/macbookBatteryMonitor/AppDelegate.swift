@@ -132,7 +132,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             let delegate = Unmanaged<AppDelegate>.fromOpaque(context).takeUnretainedValue()
             MainActor.assumeIsolated { delegate.refresh() }
         }, context)?.takeRetainedValue() else { return }
-        CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
     }
 
     @objc private func willSleep() {

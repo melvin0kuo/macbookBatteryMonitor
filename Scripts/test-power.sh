@@ -6,5 +6,5 @@ models=(Sources/macbookBatteryMonitor/Model/ComponentPower.swift)
 if [[ -f Sources/macbookBatteryMonitor/Model/PowerBreakdown.swift ]]; then
     models+=(Sources/macbookBatteryMonitor/Model/PowerBreakdown.swift)
 fi
-swiftc "${models[@]}" Sources/macbookBatteryMonitor/UI/PowerFlowLayers.swift Tests/macbookBatteryMonitorTests/*.swift Tests/main.swift -o build/tests/power-tests
+swiftc Sources/macbookBatteryMonitor/Data/BatteryReader.swift Sources/macbookBatteryMonitor/Data/SMC.swift Sources/macbookBatteryMonitor/Data/ChargeLimit.swift Sources/macbookBatteryMonitor/Model/Estimator.swift "${models[@]}" Sources/macbookBatteryMonitor/UI/PowerFlowLayers.swift Tests/macbookBatteryMonitorTests/*.swift Tests/main.swift -o build/tests/power-tests
 build/tests/power-tests

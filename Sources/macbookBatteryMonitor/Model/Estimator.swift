@@ -40,6 +40,7 @@ enum Estimator {
     static func state(_ s: BatterySnapshot) -> PowerState {
         guard s.externalConnected else { return .discharging }
         if s.isCharging { return .charging }
+        if s.amperage_mA < -50 { return .pluggedIdle }
         if let limit = s.chargeLimit?.limit, s.percent >= limit - 1 { return .limitReached }
         if s.fullyCharged || s.percent >= 100 { return .full }
         return .pluggedIdle
@@ -50,7 +51,9 @@ enum Estimator {
         let batteryWatts = Double(s.voltage_mV) * Double(s.amperage_mA) / 1_000_000
         var e = Estimates(state: state, avgDischarge_mA: avgDischarge_mA, avgCharge_mA: avgCharge_mA, batteryWatts: batteryWatts)
 
-        if let load = s.systemLoad_mW {
+        if !s.externalConnected, batteryWatts < 0 {
+            e.systemWatts = -batteryWatts
+        } else if let load = s.systemLoad_mW {
             e.systemWatts = Double(load) / 1000
         } else if batteryWatts < 0 {
             e.systemWatts = -batteryWatts

@@ -38,6 +38,18 @@ struct BatterySnapshot: Codable, Equatable {
     var serial: String?
     /// 系統設定的充電上限（沒設定時為 nil）
     var chargeLimit: ChargeLimit?
+
+    /// AC／滿電旗標可能在停止供電後仍保留；只在有明確零輸入且放電時覆寫。
+    mutating func reconcilePowerSource(inputMilliwatts: Int?) {
+        if externalConnected, !isCharging, amperage_mA < -50, inputMilliwatts == 0 {
+            externalConnected = false
+        }
+        if !externalConnected {
+            isCharging = false
+            adapter = nil
+            systemPowerIn_mW = nil
+        }
+    }
 }
 
 enum BatteryReader {
@@ -86,6 +98,7 @@ enum BatteryReader {
         s.notChargingReason = int(charger["NotChargingReason"]) ?? int(reg["NotChargingReason"])
         s.systemLoad_mW = positive(int(telemetry["SystemLoad"]))
         s.systemPowerIn_mW = positive(int(telemetry["SystemPowerIn"]))
+        s.reconcilePowerSource(inputMilliwatts: int(telemetry["SystemPowerIn"]))
         s.lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         s.serial = reg["Serial"] as? String
         s.chargeLimit = ChargeLimitReader.current()
