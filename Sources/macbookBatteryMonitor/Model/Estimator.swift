@@ -48,7 +48,10 @@ enum Estimator {
 
     static func estimates(_ s: BatterySnapshot, avgDischarge_mA: Double?, avgCharge_mA: Double?) -> Estimates {
         let state = state(s)
-        let batteryWatts = s.smcBatteryWatts ?? (Double(s.voltage_mV) * Double(s.amperage_mA) / 1_000_000)
+        let registryWatts = Double(s.voltage_mV) * Double(s.amperage_mA) / 1_000_000
+        let measuredWatts = s.smcBatteryWatts ?? registryWatts
+        let batteryWatts = s.externalConnected ? measuredWatts
+            : min(0, measuredWatts > 0 ? registryWatts : measuredWatts)
         var e = Estimates(state: state, avgDischarge_mA: avgDischarge_mA, avgCharge_mA: avgCharge_mA, batteryWatts: batteryWatts)
 
         if let system = s.smcSystemWatts {

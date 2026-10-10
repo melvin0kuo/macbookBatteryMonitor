@@ -1,5 +1,17 @@
 import Foundation
 final class PowerSourceTests {
+    func testUnplugIgnoresDelayedPositivePowerReadings() {
+        var snapshot = BatterySnapshot(percent: 100, isCharging: true, externalConnected: false,
+            voltage_mV: 12678, amperage_mA: -949)
+        snapshot.applyLivePower(battery: 0.95, adapter: 18, system: 17)
+        snapshot.reconcilePowerSource(inputMilliwatts: 18000)
+        XCTAssertTrue(!snapshot.externalConnected)
+        XCTAssertTrue(!snapshot.isCharging)
+        let estimates = Estimator.estimates(snapshot, avgDischarge_mA: 949, avgCharge_mA: nil)
+        XCTAssertEqual(estimates.state, .discharging)
+        XCTAssertTrue(estimates.batteryWatts <= 0)
+        XCTAssertNil(estimates.adapterInputWatts)
+    }
     func testReplugPrefersLiveSMCOverOldRegistryValues() {
         var snapshot = BatterySnapshot(percent: 100, externalConnected: true, fullyCharged: true,
             voltage_mV: 12678, amperage_mA: -949, systemLoad_mW: 12033)
@@ -20,6 +32,7 @@ final class PowerSourceTests {
         snapshot.reconcilePowerSource(inputMilliwatts: 18000)
         XCTAssertTrue(!snapshot.externalConnected)
         XCTAssertEqual(Estimator.state(snapshot), .discharging)
+        snapshot.externalConnected = true // 下一次快照回報重新連接
         snapshot.applyLivePower(battery: 0.95, adapter: 18, system: 17)
         snapshot.reconcilePowerSource(inputMilliwatts: 0)
         XCTAssertTrue(snapshot.externalConnected)

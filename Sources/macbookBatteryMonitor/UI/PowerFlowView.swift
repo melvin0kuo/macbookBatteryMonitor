@@ -111,7 +111,7 @@ private final class DiagramView: NSView {
         let sinkX = w - 44
         let x1 = sourceWidth + 4
         let x2 = sinkX - 4
-        let charging = c.batteryWatts >= 0.05
+        let charging = c.connected && c.batteryWatts >= 0.05
         let mixed = c.connected && c.batteryWatts <= -0.05
         let active = c.connected || abs(c.batteryWatts) >= 0.05
         let adapterText: String = c.adapterWatts.map { Format.watts($0) }

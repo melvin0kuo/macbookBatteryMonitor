@@ -46,6 +46,7 @@ struct BatterySnapshot: Codable, Equatable {
     /// SMC 功率換算的近似電流；原始 Registry 電流保留供診斷。
     var effectiveAmperage_mA: Int {
         guard let watts = smcBatteryWatts, voltage_mV > 0 else { return amperage_mA }
+        if !externalConnected, watts > 0 { return min(0, amperage_mA) }
         return Int((watts * 1_000_000 / Double(voltage_mV)).rounded())
     }
 
@@ -61,8 +62,8 @@ struct BatterySnapshot: Codable, Equatable {
 
     /// AC／滿電旗標可能在停止供電後仍保留；只在有明確零輸入且放電時覆寫。
     mutating func reconcilePowerSource(inputMilliwatts: Int?) {
-        if let input = smcAdapterWatts, input > 0.5 {
-            externalConnected = true
+        if externalConnected, let input = smcAdapterWatts, input > 0.5 {
+            // 已接上時，SMC 可排除 Registry 零輸入的延遲；不覆寫明確的拔除狀態。
         } else if !isCharging, effectiveAmperage_mA < -50,
                   (smcAdapterWatts.map { $0 <= 0.5 } ?? (inputMilliwatts == 0)) {
             externalConnected = false
@@ -100,7 +101,9 @@ enum BatteryReader {
             s.percent = cur * 100 / max
         }
         s.isCharging = bool(ps["Is Charging"]) ?? bool(reg["IsCharging"]) ?? false
-        if let state = ps["Power Source State"] as? String {
+        if let connected = bool(reg["ExternalConnected"]) {
+            s.externalConnected = connected
+        } else if let state = ps["Power Source State"] as? String {
             s.externalConnected = state == "AC Power"
         } else {
             s.externalConnected = bool(reg["ExternalConnected"]) ?? false
