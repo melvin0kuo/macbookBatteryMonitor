@@ -9,14 +9,15 @@ macOS 選單列的電池資訊 App。
 
 ## 下載與版本選擇
 
-到 [Releases](https://github.com/sgeric910601/macbookBatteryMonitor/releases) 下載編好的 App，兩個版本功能相同，差在電力流向的呈現方式：
+到 [Releases](https://github.com/sgeric910601/macbookBatteryMonitor/releases) 下載編好的 App。v1.2.0 是完整版，可以看到各硬體的耗電；想要較精簡、較省電可以選舊版本：
 
 | 版本 | 電力流向 | 面板開著時 CPU | 面板關閉時 CPU | 適合 |
 |---|---|---|---|---|
-| [v1.1.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.1.0)（最新） | 動畫 Sankey 流向圖，依功率分流 | 約 3% | 約 0% | 想要較生動的介面 |
+| [v1.2.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.2.0)（最新，完整版） | 動畫流向圖，可展開螢幕背光、晶片運算與 CPU／GPU／ANE，每秒更新 | 尚未實測 | 尚未實測（關閉時停止硬體取樣） | 想看各硬體的耗電 |
+| [v1.1.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.1.0) | 動畫 Sankey 流向圖，依功率分流 | 約 3% | 約 0% | 想要較生動的介面 |
 | [v1.0.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.0.0) | 靜態圖示與箭頭 | 約 1% | 約 0% | 想要最精簡、最省電 |
 
-> CPU 數據為 M1 MacBook Air 實測，面板開著時停在「耗電排行」分頁（含每 5 秒的 `top` 取樣）。
+> v1.1.0、v1.0.0 的 CPU 數據為 M1 MacBook Air 實測，面板開著時停在「耗電排行」分頁（含每 5 秒的 `top` 取樣）。
 
 ## 安裝
 
@@ -68,7 +69,7 @@ macOS 選單列的電池資訊 App。
 ```bash
 git clone https://github.com/sgeric910601/macbookBatteryMonitor.git
 cd macbookBatteryMonitor
-git checkout v1.1.0          # 或 v1.0.0，不指定就是最新的開發版
+git checkout v1.2.0          # 或 v1.1.0、v1.0.0，不指定就是最新的開發版
 ./build.sh                   # 產生 build/macbookBatteryMonitor.app
 ./build.sh install           # 安裝到 /Applications 並啟動
 ```
@@ -93,7 +94,7 @@ Scripts/test-power.sh  # Command Line Tools 可執行的換算、生命週期與
 - SMC 溫度只在面板開著時讀
 - 面板每次打開才建立，關閉就連同視窗整個釋放，背景沒有任何畫面在更新
 - 耗電排行（`top`）只在面板開著且停在該分頁時，每 5 秒取樣一次
-- v1.1.0 的流向動畫由 Core Animation 合成（不逐幀更新 SwiftUI），只在面板開著且該線路有供電時播放；支援「減少動態效果」
+- v1.1.0 起的流向動畫由 Core Animation 合成（不逐幀更新 SwiftUI），只在面板開著且該線路有供電時播放；支援「減少動態效果」
 - 歷史紀錄每 15 分鐘寫一次檔，睡眠前和結束時也會存
 - 健康度（`system_profiler`）每 6 小時查一次
 
@@ -125,6 +126,14 @@ Scripts/test-power.sh  # Command Line Tools 可執行的換算、生命週期與
    rm -rf ~/Library/Application\ Support/BatteryMonitor
    defaults delete com.kuan.batterymonitor
    ```
+
+## 發布
+
+推送 `v*` tag 後，GitHub Actions 會在 macOS 上測試、編譯、打包，並建立該版本的 Release（說明取自 `.github/release-notes/<tag>.md`）：
+
+```bash
+git tag v1.2.0 && git push origin v1.2.0
+```
 
 ## 開發
 
