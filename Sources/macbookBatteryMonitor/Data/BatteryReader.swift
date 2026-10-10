@@ -43,9 +43,27 @@ struct BatterySnapshot: Codable, Equatable {
     var smcAdapterWatts: Double?
     var smcSystemWatts: Double?
 
+    /// 電池功率（W，正值充入、負值放出），用 SMC 的「外部輸入 − 系統耗電」推算。
+    /// PPBR 在部分機型（例如 M1 MacBook Air）不是帶正負號的電池功率，充電時可能只讀到 1～2 W，
+    /// 用能量守恆推算才能讓輸入、系統、電池三者對得起來。剛拔電時 PDTR 可能還留著舊值，
+    /// 所以只在確認接電時才計入輸入；沒有 PSTR 時才退回 PPBR。
+    var liveBatteryWatts: Double? {
+        if let system = smcSystemWatts {
+            let input = externalConnected ? (smcAdapterWatts ?? 0) : 0
+            return input - system
+        }
+        return smcBatteryWatts
+    }
+
+    /// 電量高於系統充電上限、macOS 暫停變壓器供電讓電池放電到上限（生效中的策略只在接電時存在）
+    var drainingToChargeLimit: Bool {
+        guard let limit = chargeLimit, limit.active else { return false }
+        return percent >= limit.limit - 1
+    }
+
     /// SMC 功率換算的近似電流；原始 Registry 電流保留供診斷。
     var effectiveAmperage_mA: Int {
-        guard let watts = smcBatteryWatts, voltage_mV > 0 else { return amperage_mA }
+        guard let watts = liveBatteryWatts, voltage_mV > 0 else { return amperage_mA }
         if !externalConnected, watts > 0 { return min(0, amperage_mA) }
         return Int((watts * 1_000_000 / Double(voltage_mV)).rounded())
     }
@@ -64,6 +82,8 @@ struct BatterySnapshot: Codable, Equatable {
     mutating func reconcilePowerSource(inputMilliwatts: Int?) {
         if externalConnected, let input = smcAdapterWatts, input > 0.5 {
             // 已接上時，SMC 可排除 Registry 零輸入的延遲；不覆寫明確的拔除狀態。
+        } else if externalConnected, drainingToChargeLimit {
+            // 放電到充電上限時變壓器暫停供電，但線仍接著，不視為拔除。
         } else if !isCharging, effectiveAmperage_mA < -50,
                   (smcAdapterWatts.map { $0 <= 0.5 } ?? (inputMilliwatts == 0)) {
             externalConnected = false
@@ -127,10 +147,10 @@ enum BatteryReader {
         if includeLivePower {
             s.applyLivePower(battery: smc?.read("PPBR"), adapter: smc?.read("PDTR"), system: smc?.read("PSTR"))
         }
+        s.chargeLimit = ChargeLimitReader.current()
         s.reconcilePowerSource(inputMilliwatts: int(telemetry["SystemPowerIn"]))
         s.lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         s.serial = reg["Serial"] as? String
-        s.chargeLimit = ChargeLimitReader.current()
 
         if let t = int(reg["Temperature"]) ?? int(data["Temperature"]) ?? int(reg["VirtualTemperature"]), t > 0 {
             s.temperature_C = Double(t) / 100
