@@ -30,11 +30,11 @@ enum DumpCommand {
             return
         }
         s.chargeLimit = ChargeLimitReader.resolve(externalConnected: s.externalConnected, pluggedSince: nil)
-        let current = Double(abs(s.amperage_mA))
+        let current = Double(abs(s.effectiveAmperage_mA))
         let e = Estimator.estimates(
             s,
-            avgDischarge_mA: s.amperage_mA < 0 ? current : nil,
-            avgCharge_mA: s.amperage_mA > 0 ? current : nil
+            avgDischarge_mA: s.effectiveAmperage_mA < 0 ? current : nil,
+            avgCharge_mA: s.effectiveAmperage_mA > 0 ? current : nil
         )
         let output = Output(
             snapshot: s,

@@ -1,5 +1,30 @@
 import Foundation
 final class PowerSourceTests {
+    func testReplugPrefersLiveSMCOverOldRegistryValues() {
+        var snapshot = BatterySnapshot(percent: 100, externalConnected: true, fullyCharged: true,
+            voltage_mV: 12678, amperage_mA: -949, systemLoad_mW: 12033)
+        snapshot.applyLivePower(battery: 0.95, adapter: 18, system: 17)
+        snapshot.reconcilePowerSource(inputMilliwatts: 0)
+        XCTAssertTrue(snapshot.externalConnected)
+        let estimates = Estimator.estimates(snapshot, avgDischarge_mA: nil, avgCharge_mA: nil)
+        XCTAssertEqual(estimates.state, .full)
+        XCTAssertEqual(estimates.batteryWatts, 0.95)
+        XCTAssertEqual(estimates.adapterInputWatts, 18)
+        XCTAssertEqual(estimates.systemWatts, 17)
+        XCTAssertTrue(snapshot.effectiveAmperage_mA > 0)
+    }
+    func testUnplugThenReplugUsesLiveSupply() {
+        var snapshot = BatterySnapshot(percent: 100, externalConnected: true, fullyCharged: true,
+            voltage_mV: 12678, amperage_mA: -949)
+        snapshot.applyLivePower(battery: -12, adapter: 0, system: 12)
+        snapshot.reconcilePowerSource(inputMilliwatts: 18000)
+        XCTAssertTrue(!snapshot.externalConnected)
+        XCTAssertEqual(Estimator.state(snapshot), .discharging)
+        snapshot.applyLivePower(battery: 0.95, adapter: 18, system: 17)
+        snapshot.reconcilePowerSource(inputMilliwatts: 0)
+        XCTAssertTrue(snapshot.externalConnected)
+        XCTAssertEqual(Estimator.state(snapshot), .full)
+    }
     func testFullBatteryWithStaleACFlagSwitchesToBattery() {
         var snapshot = BatterySnapshot(percent: 100, externalConnected: true, fullyCharged: true,
             voltage_mV: 12682, amperage_mA: -1021, remaining_mAh: 5275, systemLoad_mW: 14764)

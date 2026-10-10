@@ -83,10 +83,10 @@ final class BatteryStore {
                 unpluggedAt = nil
             }
         }
-        let current = Double(abs(s.amperage_mA))
-        if s.amperage_mA < 0 {
+        let current = Double(abs(s.effectiveAmperage_mA))
+        if s.effectiveAmperage_mA < 0 {
             avgDischarge = ema(avgDischarge, current, dt)
-        } else if s.amperage_mA > 0 {
+        } else if s.effectiveAmperage_mA > 0 {
             avgCharge = ema(avgCharge, current, dt)
         }
         lastDate = s.date

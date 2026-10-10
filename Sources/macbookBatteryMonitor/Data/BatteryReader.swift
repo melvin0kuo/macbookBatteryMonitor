@@ -39,9 +39,32 @@ struct BatterySnapshot: Codable, Equatable {
     /// 系統設定的充電上限（沒設定時為 nil）
     var chargeLimit: ChargeLimit?
 
+    var smcBatteryWatts: Double?
+    var smcAdapterWatts: Double?
+    var smcSystemWatts: Double?
+
+    /// SMC 功率換算的近似電流；原始 Registry 電流保留供診斷。
+    var effectiveAmperage_mA: Int {
+        guard let watts = smcBatteryWatts, voltage_mV > 0 else { return amperage_mA }
+        return Int((watts * 1_000_000 / Double(voltage_mV)).rounded())
+    }
+
+    mutating func applyLivePower(battery: Double?, adapter: Double?, system: Double?) {
+        func valid(_ value: Double?, signed: Bool = false) -> Double? {
+            guard let value, value.isFinite, abs(value) < 500, signed || value >= 0 else { return nil }
+            return value
+        }
+        smcBatteryWatts = valid(battery, signed: true)
+        smcAdapterWatts = valid(adapter)
+        smcSystemWatts = valid(system)
+    }
+
     /// AC／滿電旗標可能在停止供電後仍保留；只在有明確零輸入且放電時覆寫。
     mutating func reconcilePowerSource(inputMilliwatts: Int?) {
-        if externalConnected, !isCharging, amperage_mA < -50, inputMilliwatts == 0 {
+        if let input = smcAdapterWatts, input > 0.5 {
+            externalConnected = true
+        } else if !isCharging, effectiveAmperage_mA < -50,
+                  (smcAdapterWatts.map { $0 <= 0.5 } ?? (inputMilliwatts == 0)) {
             externalConnected = false
         }
         if !externalConnected {
@@ -55,7 +78,7 @@ struct BatterySnapshot: Codable, Equatable {
 enum BatteryReader {
     private static let smc = SMC()
 
-    static func read(includeTemperature: Bool = true) -> BatterySnapshot? {
+    static func read(includeTemperature: Bool = true, includeLivePower: Bool = true) -> BatterySnapshot? {
         guard let reg = registryProperties() else { return nil }
         let data = reg["BatteryData"] as? [String: Any] ?? [:]
         let telemetry = reg["PowerTelemetryData"] as? [String: Any] ?? [:]
@@ -98,6 +121,9 @@ enum BatteryReader {
         s.notChargingReason = int(charger["NotChargingReason"]) ?? int(reg["NotChargingReason"])
         s.systemLoad_mW = positive(int(telemetry["SystemLoad"]))
         s.systemPowerIn_mW = positive(int(telemetry["SystemPowerIn"]))
+        if includeLivePower {
+            s.applyLivePower(battery: smc?.read("PPBR"), adapter: smc?.read("PDTR"), system: smc?.read("PSTR"))
+        }
         s.reconcilePowerSource(inputMilliwatts: int(telemetry["SystemPowerIn"]))
         s.lowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         s.serial = reg["Serial"] as? String

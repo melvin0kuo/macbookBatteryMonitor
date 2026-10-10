@@ -73,3 +73,5 @@ Scripts/test-power.sh  # Command Line Tools 可執行的換算、生命週期與
 
 ## 注意
 只裝 Command Line Tools 時沒有 SwiftUI 的 macro 外掛，所以程式裡不用 `@State`，介面狀態集中在 `PanelState`。
+
+插拔電源時，總覽優先使用 SMC PPBR（電池功率）、PDTR（外部輸入）與 PSTR（系統功耗），避免重插後 Registry 電流和輸入功率仍停留在舊狀態。SMC 可用時，電流由電池功率及電壓換算並以 ≈ 標示；原始電流保留於診斷輸出。插拔通知後會在 1、3、6 秒短暫重讀，之後回到正常更新間隔。
