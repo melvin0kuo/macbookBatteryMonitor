@@ -11,7 +11,7 @@
     <key>CFBundleName</key>
     <string>macbookBatteryMonitor</string>
     <key>CFBundleDisplayName</key>
-    <string>電池監控</string>
+    <string>電池監控 Full</string>
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>
     <key>CFBundlePackageType</key>
