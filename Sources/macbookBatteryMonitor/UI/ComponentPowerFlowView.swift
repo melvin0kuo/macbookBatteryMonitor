@@ -112,27 +112,28 @@ private final class ComponentRibbonView: NSView {
         CATransaction.setDisableActions(true)
         layer.sublayers?.filter { !(($0.name ?? "").hasPrefix("flow-")) }.forEach { $0.removeFromSuperlayer() }
         flows.begin(in: layer)
-        let widths = c.values.map { watts -> CGFloat in
-            guard let watts, watts.isFinite, watts > 0 else { return 0 }
-            return max(3, min(28, CGFloat(watts / max(0.1, c.total ?? watts)) * 60))
-        }
-        var source = (bounds.height - widths.reduce(0, +)) / 2
+        // Match the source card (92 pt) and destination cards (38 pt).
+        // Only measured positive branches participate in the source split.
+        let active = c.values.map { $0.map { $0.isFinite && $0 > 0 } ?? false }
+        let count = active.filter { $0 }.count
+        let sourceWidth: CGFloat = count > 0 ? 92 / CGFloat(count) : 0
+        var source: CGFloat = (bounds.height - 92) / 2
         let start: CGFloat = 4
         let end = bounds.width - 4
         let ink = c.dark ? NSColor(white: 0.95, alpha: 1) : NSColor(white: 0.24, alpha: 1)
         for index in c.values.indices {
             let center = CGFloat(index) * 44 + 19
-            let width = widths[index]
-            if width > 0 {
+            let width: CGFloat = 38
+            if active[index] {
                 let path = CGMutablePath()
                 path.move(to: CGPoint(x: start, y: source))
                 path.addCurve(to: CGPoint(x: end, y: center - width / 2),
                               control1: CGPoint(x: bounds.width / 2, y: source),
                               control2: CGPoint(x: bounds.width / 2, y: center - width / 2))
                 path.addLine(to: CGPoint(x: end, y: center + width / 2))
-                path.addCurve(to: CGPoint(x: start, y: source + width),
+                path.addCurve(to: CGPoint(x: start, y: source + sourceWidth),
                               control1: CGPoint(x: bounds.width / 2, y: center + width / 2),
-                              control2: CGPoint(x: bounds.width / 2, y: source + width))
+                              control2: CGPoint(x: bounds.width / 2, y: source + sourceWidth))
                 path.closeSubpath()
                 let base = CAShapeLayer()
                 base.path = path
@@ -140,7 +141,7 @@ private final class ComponentRibbonView: NSView {
                 layer.addSublayer(base)
                 flows.update(id: "flow-\(index)", path: path, bounds: bounds, animated: c.animated,
                              dark: c.dark, startX: start, endX: end)
-                source += width
+                source += sourceWidth
             }
             let label = CATextLayer()
             label.contentsScale = window?.backingScaleFactor ?? 2
