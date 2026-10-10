@@ -34,6 +34,7 @@ enum SnapshotCommand {
                 render(view, appearance: appearance, settle: name == "processes" ? 3 : 0.5,
                        to: dir.appendingPathComponent("panel-\(name)-\(suffix).png"))
             }
+            renderPowerFlows(appearance: appearance, to: dir.appendingPathComponent("power-flows-\(suffix).png"))
             renderStatusIcons(appearance: appearance, to: dir.appendingPathComponent("icons-\(suffix).png"))
         }
         print("已輸出到 \(dir.path)")
@@ -58,6 +59,32 @@ enum SnapshotCommand {
         hosting.layoutSubtreeIfNeeded()
         save(view: hosting, to: url)
         window.orderOut(nil)
+    }
+
+    /// 固定資料可檢查充電、放電、閒置及混合供電，無須實際插拔電源。
+    private static func renderPowerFlows(appearance: NSAppearance.Name, to url: URL) {
+        let cases: [(String, Bool, Double)] = [
+            ("充電", true, 18), ("放電", false, -12),
+            ("已接電源・電池閒置", true, 0), ("變壓器與電池一起供電", true, -5),
+        ]
+        let view = VStack(spacing: 10) {
+            ForEach(cases.indices, id: \.self) { index in
+                let item = cases[index]
+                let snapshot = BatterySnapshot(percent: 72, externalConnected: item.1)
+                let estimates = Estimates(state: item.2 > 0 ? .charging : (item.1 ? .pluggedIdle : .discharging),
+                                          batteryWatts: item.2, systemWatts: 12,
+                                          adapterInputWatts: item.1 ? 12 + item.2 : nil)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(item.0).font(.caption).foregroundStyle(.secondary)
+                    PowerFlowView(s: snapshot, e: estimates)
+                }
+            }
+        }
+        .padding(14)
+        .frame(width: 380)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .environment(\.colorScheme, appearance == .aqua ? .light : .dark)
+        render(view, appearance: appearance, settle: 0.2, to: url)
     }
 
     private static func renderStatusIcons(appearance: NSAppearance.Name, to url: URL) {
