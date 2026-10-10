@@ -53,6 +53,7 @@ enum SnapshotCommand {
             renderComponentFlows(appearance: appearance, directory: dir, suffix: suffix)
             renderPowerFlows(appearance: appearance, to: dir.appendingPathComponent("power-flows-\(suffix).png"))
             renderStatusIcons(appearance: appearance, to: dir.appendingPathComponent("icons-\(suffix).png"))
+            renderStatusIcons(appearance: appearance, to: dir.appendingPathComponent("icons-percent-time-\(suffix).png"), showsPercent: true)
         }
         store.setHardwareSampling(active: false)
         print("已輸出到 \(dir.path)")
@@ -142,12 +143,20 @@ enum SnapshotCommand {
         }
     }
 
-    private static func renderStatusIcons(appearance: NSAppearance.Name, to url: URL) {
+    private static func renderStatusIcons(appearance: NSAppearance.Name, to url: URL, showsPercent: Bool = false) {
         let cases: [(Int, PowerState, Bool)] = [(82, .discharging, false), (15, .discharging, true), (55, .charging, false), (80, .pluggedIdle, false), (95, .limitReached, false), (100, .full, false)]
         let stack = NSStackView(views: cases.map { pct, state, low in
-            let button = NSButton(title: "\(pct)%", image: StatusIconRenderer.image(percent: pct, state: state, low: low), target: nil, action: nil)
+            let time: String
+            switch state {
+            case .discharging: time = "3:25"
+            case .charging: time = "1:20"
+            case .full: time = "已充飽"
+            case .pluggedIdle: time = "接電"
+            case .limitReached: time = "已達上限"
+            }
+            let button = NSButton(title: showsPercent ? time : "\(pct)%", image: StatusIconRenderer.image(percent: pct, state: state, low: low, showsPercent: showsPercent), target: nil, action: nil)
             button.isBordered = false
-            button.imagePosition = .imageTrailing
+            button.imagePosition = showsPercent ? .imageLeading : .imageTrailing
             button.font = NSFont.monospacedDigitSystemFont(ofSize: 12.5, weight: .regular)
             return button
         })
