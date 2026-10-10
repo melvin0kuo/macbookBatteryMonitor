@@ -133,11 +133,10 @@ Scripts/test-power.sh  # Command Line Tools 可執行的換算、生命週期與
 
 ## 發布
 
-推送 `v*` tag 後，GitHub Actions 會在 macOS 上測試、編譯、打包，並建立該版本的 Release（說明取自 `.github/release-notes/<tag>.md`）：
+GitHub Actions 會在 macOS 上測試、編譯、打包並建立 Release，說明取自 `.github/release-notes/<tag>.md`（第一行為標題）：
 
-```bash
-git tag v1.2.0 && git push origin v1.2.0
-```
+- 把 `Resources/Info.plist` 的版本改成新版本，並新增對應的 `.github/release-notes/v<版本>.md`，推到 main 後會自動建立 `v<版本>` tag 並發布
+- 也可以直接推送 tag：`git tag v1.2.0 && git push origin v1.2.0`
 
 ## 開發
 
