@@ -18,6 +18,7 @@ final class BatteryStore {
     @ObservationIgnored private var samplingGate = SamplingGate()
 
     func setHardwareSampling(active: Bool) {
+        guard !AppVariant.isLite else { return }
         let changed = samplingGate.active != active
         samplingGate.setActive(active)
         if !active {
@@ -132,7 +133,7 @@ final class BatteryStore {
     }
 
     func refreshProcesses() async {
-        guard panelVisible, !loadingProcesses else { return }
+        guard !AppVariant.isLite, panelVisible, !loadingProcesses else { return }
         loadingProcesses = true
         let result = await ProcessEnergy.sample()
         topProcesses = result

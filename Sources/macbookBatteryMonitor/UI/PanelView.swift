@@ -30,9 +30,9 @@ struct PanelView: View {
             if let s = store.snapshot, let e = store.estimates {
                 HeaderView(s: s, e: e, lowThreshold: settings.lowThreshold)
                 TimeCard(s: s, e: e, unpluggedAt: store.unpluggedAt, fullThreshold: settings.fullThreshold)
-                PowerFlowView(s: s, e: e, breakdown: store.breakdown, ui: ui)
+                PowerFlowView(s: s, e: e, breakdown: AppVariant.isLite ? nil : store.breakdown, ui: AppVariant.isLite ? nil : ui)
                 Picker("", selection: ui.binding(\.tab)) {
-                    ForEach(BottomTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                    ForEach(BottomTab.allCases.filter { !AppVariant.isLite || $0 != .processes }, id: \.self) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()

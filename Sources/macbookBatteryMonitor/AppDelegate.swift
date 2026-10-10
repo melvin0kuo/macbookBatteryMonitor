@@ -20,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     /// 面板關著時的更新間隔。插拔電源由 IOPS 通知即時更新，不靠這個計時器
     private static let idleInterval: TimeInterval = 30
-    private static let openInterval: TimeInterval = 1
+    private static let openInterval: TimeInterval = AppVariant.openInterval
     private static let processInterval: TimeInterval = 5
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -61,7 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         guard hardware || CommandLine.arguments.contains("--selftest-panel") else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             guard let self else { return }
-            ui.tab = hardware ? .details : .processes
+            ui.tab = hardware || AppVariant.isLite ? .details : .processes
             ui.powerFlowLevel = hardware ? .components : .overview
             showPopover(page: .main)
             if hardware {
@@ -276,6 +276,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     func popoverWillShow(_ notification: Notification) {
         scheduleRefresh(every: Self.openInterval)
         processTimer?.invalidate()
+        guard !AppVariant.isLite else { return }
         processTimer = repeating(every: Self.processInterval) { delegate in
             guard delegate.ui.page == .main, delegate.ui.tab == .processes else { return }
             Task { await delegate.store.refreshProcesses() }

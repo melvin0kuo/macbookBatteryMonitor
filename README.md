@@ -9,14 +9,24 @@ macOS 選單列的電池資訊 App。
 
 ## 下載與版本選擇
 
-到 [Releases](https://github.com/sgeric910601/macbookBatteryMonitor/releases) 下載編好的 App，兩個版本功能相同，差在電力流向的呈現方式：
+此 fork 提供兩個獨立版本，兩者皆包含最新的電源插拔修正：
 
-| 版本 | 電力流向 | 面板開著時 CPU | 面板關閉時 CPU | 適合 |
-|---|---|---|---|---|
-| [v1.1.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.1.0)（最新） | 動畫 Sankey 流向圖，依功率分流 | 約 3% | 約 0% | 想要較生動的介面 |
-| [v1.0.0](https://github.com/sgeric910601/macbookBatteryMonitor/releases/tag/v1.0.0) | 靜態圖示與箭頭 | 約 1% | 約 0% | 想要最精簡、最省電 |
+| 版本 | 功能 | 面板更新 | 下載 |
+|---|---|---|---|
+| Full 完整版 | 動畫流向、硬體分層、CPU／GPU／ANE、耗電排行及完整電池資訊 | 每 1 秒；耗電排行每 5 秒 | [Full 1.2.0](https://github.com/melvin0kuo/macbookBatteryMonitor/releases/tag/v1.2.0-full) |
+| Lite 省電版 | 靜態流向、電池資訊、剩餘時間、健康度、歷史與通知；停用硬體分層與耗電排行 | 每 5 秒 | [Lite 1.2.0](https://github.com/melvin0kuo/macbookBatteryMonitor/releases/tag/v1.2.0-lite) |
 
-> CPU 數據為 M1 MacBook Air 實測，面板開著時停在「耗電排行」分頁（含每 5 秒的 `top` 取樣）。
+兩版面板關閉時皆每 30 秒更新電池，插拔電源由通知觸發。Lite 減少動畫與取樣工作，尚無同條件的兩版耗電實測比較，不宣稱固定節省比例。
+
+Full 的 App 為 `macbookBatteryMonitor.app`，Lite 為 `macbookBatteryMonitorLite.app`；設定、開機自啟動與歷史資料各自獨立。使用時開啟需要的版本即可，同時執行兩版會增加取樣工作。Full 沿用既有設定與歷史。
+
+原始碼分支：`release/full`、`release/lite`。`./build.sh` 依分支設定建置；也可明確指定：
+
+```bash
+./build.sh full         # build/macbookBatteryMonitor.app
+./build.sh lite         # build/macbookBatteryMonitorLite.app
+./build.sh lite install # 安裝並啟動 Lite
+```
 
 ## 安裝
 
@@ -35,6 +45,8 @@ macOS 選單列的電池資訊 App。
 要換版本時，結束 App 後用另一個版本的 `.app` 覆蓋即可，設定與歷史資料會保留。
 
 ## 功能
+
+下列為 Full 完整功能；Lite 不提供硬體分層與耗電排行，並使用靜態流向。
 
 **選單列**
 - 電池圖示 + 百分比（可切換成只有圖示、只有百分比、剩餘時間）
@@ -66,14 +78,16 @@ macOS 選單列的電池資訊 App。
 只需要 Command Line Tools（`xcode-select --install`），不需要 Xcode。
 
 ```bash
-git clone https://github.com/sgeric910601/macbookBatteryMonitor.git
+git clone https://github.com/melvin0kuo/macbookBatteryMonitor.git
 cd macbookBatteryMonitor
-git checkout v1.1.0          # 或 v1.0.0，不指定就是最新的開發版
+git checkout release/full   # 或 release/lite
 ./build.sh                   # 產生 build/macbookBatteryMonitor.app
 ./build.sh install           # 安裝到 /Applications 並啟動
 ```
 
 ## 硬體功耗
+
+本節的每秒取樣與硬體分層僅適用 Full；Lite 不啟動 IOReport 訂閱。
 面板主頁每 1 秒取樣一次；實際硬體與系統能量模型可能以較慢的頻率更新。CPU／GPU／ANE 是能量差除以實際時間窗的系統模型估算；系統總功耗優先讀取 SMC PSTR，背光讀取 SMC 感測器；兩者以相鄰讀值平均近似取樣窗。晶片合計只涵蓋取得的 CPU、GPU、ANE，不代表完整 SoC 功耗；不含外接螢幕。
 
 缺通道顯示「—」，首次取樣建立基準，CPU 能量計數未前進時顯示 0 W（代表取樣能量差為零）。使用 SMC PSTR 時，將總功耗扣除背光與已取得的晶片功耗，顯示非負差值估算；缺晶片細項時改標示「未分類（估算）」，其中包含缺失項目，不能視為純粹的其他硬體耗電。SMC 與能量模型的實際更新窗可能不同。PSTR 不可用時退回 SystemLoad；此來源沒有公開量測時間戳，故不計算殘差。
@@ -112,6 +126,8 @@ Scripts/test-power.sh  # Command Line Tools 可執行的換算、生命週期與
 | 充電上限 | `/Library/Preferences/com.apple.powerd.charging.plist`（唯讀；macOS 拔電後會清空，App 會記住上次接電時讀到的值） |
 
 ## 資料存放位置
+
+Lite 歷史資料位於 `~/Library/Application Support/BatteryMonitorLite/history.json`，設定識別為 `com.kuan.batterymonitor.lite`；以下為 Full。
 
 - 歷史紀錄：`~/Library/Application Support/BatteryMonitor/history.json`（保留 7 天）
 - 設定：`com.kuan.batterymonitor`（UserDefaults）

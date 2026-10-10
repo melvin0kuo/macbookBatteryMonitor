@@ -46,7 +46,7 @@ struct PowerFlowView: View {
     }
 
     private var diagram: some View {
-        PowerFlowDiagram(snapshot: s, estimates: e, animated: !reduceMotion, dark: colorScheme == .dark)
+        PowerFlowDiagram(snapshot: s, estimates: e, animated: !reduceMotion && !AppVariant.isLite, dark: colorScheme == .dark)
             .frame(height: 126)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("電力流向")

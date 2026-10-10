@@ -3,6 +3,10 @@ import Foundation
 /// `macbookBatteryMonitor --dump`：把目前讀到的資料印成 JSON，方便和 pmset / system_profiler 對照
 enum DumpCommand {
     static func runHardware() {
+        guard !AppVariant.isLite else {
+            print(#"{"error":"Lite 版本不提供硬體分層取樣"}"#)
+            return
+        }
         let reader = HardwarePowerReader()
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -16,6 +20,7 @@ enum DumpCommand {
     }
 
     private struct Output: Encodable {
+        var variant: String
         var snapshot: BatterySnapshot
         var estimates: Estimates
         var systemHealth: SystemHealth?
@@ -37,11 +42,12 @@ enum DumpCommand {
             avgCharge_mA: s.effectiveAmperage_mA > 0 ? current : nil
         )
         let output = Output(
+            variant: AppVariant.name,
             snapshot: s,
             estimates: e,
             systemHealth: SystemProfiler.readSync(),
             lastUnplugged: e.state == .discharging ? PowerLog.lastUnpluggedDateSync() : nil,
-            topProcesses: ProcessEnergy.sampleSync(),
+            topProcesses: AppVariant.isLite ? [] : ProcessEnergy.sampleSync(),
             loginItem: "\(LoginItem.status)"
         )
         let encoder = JSONEncoder()
