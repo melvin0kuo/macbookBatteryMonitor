@@ -9,6 +9,7 @@ macOS 選單列電池資訊 App 。只讀取資訊，不會更動任何充電設
   - 預估用到 0% 與 **用到 10%** 的時間（系統預估 + 依近 3 分鐘耗電推算）
   - 已使用電池多久（這次拔掉電源後）
   - 電力流向：灰色帶狀圖，充電分流至系統與電池，放電由電池供應系統（瓦數）
+  - 系統細項：分流顯示螢幕背光、晶片運算、其他（估算）；點晶片展開 CPU／GPU／ANE
   - 詳細資訊：電壓、電流、功率、溫度、健康度、循環次數、容量（mAh）、變壓器
   - 電量歷史圖表（1 小時／24 小時／7 天，第一次啟動會用 `pmset` 紀錄回填）
   - 耗電排行（前 5 名 App）
@@ -26,13 +27,28 @@ macOS 選單列電池資訊 App 。只讀取資訊，不會更動任何充電設
 
 ## 除錯用參數
 ```bash
+/Applications/macbookBatteryMonitor.app/Contents/MacOS/macbookBatteryMonitor --dump-hardware     # 每秒輸出硬體功耗，共五筆 JSON
+/Applications/macbookBatteryMonitor.app/Contents/MacOS/macbookBatteryMonitor --selftest-hardware # 展開晶片、切換設定並確認取樣停止
 /Applications/macbookBatteryMonitor.app/Contents/MacOS/macbookBatteryMonitor --dump            # 目前資料印成 JSON
 /Applications/macbookBatteryMonitor.app/Contents/MacOS/macbookBatteryMonitor --snapshot <資料夾> # 面板畫成 PNG
 /Applications/macbookBatteryMonitor.app/Contents/MacOS/macbookBatteryMonitor --selftest-panel    # 自動開面板 20 秒再關，測耗電用
 ```
 
+## 硬體功耗
+面板主頁每 1 秒取樣一次；實際硬體與系統能量模型可能以較慢的頻率更新。CPU／GPU／ANE 是能量差除以實際時間窗的系統模型估算；背光是 SMC 感測器讀值。晶片合計只涵蓋取得的 CPU、GPU、ANE，不代表完整 SoC 功耗；不含外接螢幕。
+
+缺通道顯示「—」，首次取樣建立基準，CPU 能量計數未前進時不顯示假零值。「其他」僅在必要細項齊全、資料時間窗已確認一致且差值非負時才顯示。現有 SystemLoad 沒有公開量測時間戳，因此實機暫不顯示其殘差，保留總功耗與可用細項。
+
+讀取不需管理員權限。IOReport 為系統私有介面，可用性依晶片與 macOS 版本而異；目前只在 M2 Pro 驗證背光與 GPU 讀值，CPU 通道在目前系統未持續更新，會顯示缺值。ANE 閒置時可為 0 W。
+
+## 測試
+```bash
+Scripts/test-power.sh  # Command Line Tools 可執行的換算、生命週期與動畫測試
+```
+
 ## 省電設計
 實測（M1 MacBook Air）：面板關著時 CPU 約 0.02%，90 秒內只用 0.02 秒 CPU，不會阻止系統睡眠。
+- 面板主頁：每 1 秒更新電池／功耗，關閉面板、進入設定或睡眠時停止硬體細項取樣
 - 面板關著：每 30 秒讀一次電池；插拔電源靠系統通知即時更新，不靠輪詢
 - 選單列圖示只有在數字或狀態改變時才重畫
 - SMC 溫度只在面板開著時讀

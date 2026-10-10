@@ -22,7 +22,7 @@ final class HardwarePowerReader {
         let system = battery?.systemLoad_mW.map { Double($0) / 1000 }
         return ComponentPowerSample(uptime: now, interval: interval,
             backlightWatts: valid(smc?.read("PDBR")) ?? valid(smc?.read("PBwo")),
-            cpuWatts: watts["cpu"], gpuWatts: watts["gpu"], aneWatts: watts["ane"],
+            cpuWatts: EnergyCounter.updatedCPUWatts(watts["cpu"]), gpuWatts: watts["gpu"], aneWatts: watts["ane"],
             systemWatts: valid(system), sampling: interval == nil && !energy.isEmpty)
     }
 }

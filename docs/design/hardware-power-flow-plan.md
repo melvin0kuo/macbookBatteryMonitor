@@ -23,16 +23,16 @@
 - 380 pt 面板與小尺寸螢幕上，展開後仍可閱讀及返回總覽。
 
 ## 1. 能量換算與硬體快照
-**檔案：**新增 Model/ComponentPower.swift、Data/IOReportReader.swift、Data/HardwarePowerReader.swift，修改 Data/SMC.swift；路徑皆位於 Sources/macbookBatteryMonitor/。新增 Tests/macbookBatteryMonitorTests/ComponentPowerTests.swift 與 Package.swift 測試目標。
+**檔案：**新增 Model/ComponentPower.swift、Data/IOReportReader.swift、Data/HardwarePowerReader.swift，修改 Data/SMC.swift；路徑皆位於 Sources/macbookBatteryMonitor/。新增 Tests/macbookBatteryMonitorTests/ComponentPowerTests.swift 及獨立測試執行器。
 
 **介面：**ComponentPowerSample 包含 uptime、背光及可選 CPU/GPU/ANE 瓦數、資料狀態。IOReportReader.sample() 提供累積焦耳值；HardwarePowerReader.sample() 計算時間窗平均瓦數，reset() 清除基準。
 
 - [ ] 先加入能量換算測試：1,000 mJ／1 秒為 1 W；1,000,000 µJ／1 秒為 1 W；未知單位、非有限值與重複通道不產生瓦數。
 - [ ] 加入首樣本、時間差小於等於零、能量回捲、缺 CPU/GPU/ANE 通道的測試；第一次只建立基準。
-- [ ] 執行 swift test，確認測試因尚無實作失敗。
+- [ ] 執行 Scripts/test-power.sh，確認測試因尚無實作失敗。
 - [ ] 實作換算與唯讀讀取器；動態驗證 IOReport 符號，保持原生可變 CFDictionary，避免 Swift 橋接後破壞 API 要求。
 - [ ] 本機取得至少三個連續樣本，檢查背光與晶片能量單位、時間窗、功耗量級及總功耗範圍。
-- [ ] 執行 swift test，確認全部通過後提交此步。
+- [ ] 執行 Scripts/test-power.sh，確認全部通過後提交此步。
 
 ## 2. 取樣生命週期與分流計算
 **檔案：**修改 Model/BatteryStore.swift、AppDelegate.swift；新增 Model/PowerBreakdown.swift 與 Tests/macbookBatteryMonitorTests/PowerBreakdownTests.swift。
@@ -41,10 +41,10 @@
 
 - [ ] 先加入測試：總功耗 12 W、背光 3 W、CPU 2 W、GPU 1 W、ANE 0 W，晶片合計 3 W、其他 6 W；缺細項、負殘差及超過 3 秒未更新的樣本不能生成有效殘差。
 - [ ] 加入可測的採樣狀態／世代控制測試，確認關閉、重開、切換設定頁、睡眠後，舊樣本被丟棄。
-- [ ] 執行 swift test，確認新測試失敗。
+- [ ] 執行 Scripts/test-power.sh，確認新測試失敗。
 - [ ] 實作狀態控制與殘差計算；讀取在背景序列佇列執行，主執行緒只發佈有效結果；不重疊取樣。
 - [ ] 將 AppDelegate.openInterval 改為 1 秒；關閉／設定頁／睡眠停止硬體採樣，重開／喚醒建立新基準。
-- [ ] 執行 swift test，確認全部通過後提交此步。
+- [ ] 執行 Scripts/test-power.sh，確認全部通過後提交此步。
 
 ## 3. 分層介面與持續動畫
 **檔案：**修改 UI/PowerFlowView.swift、UI/PanelView.swift、UI/PanelState.swift；新增 UI/ComponentPowerFlowView.swift，將持續動畫圖層集中於 UI/PowerFlowLayers.swift。
@@ -63,7 +63,11 @@
 
 - [ ] 快照涵蓋總覽、硬體分流、晶片展開、缺值與資料不同步；充電／放電／混合供電各使用固定資料並輸出深淺色。
 - [ ] Dump 輸出硬體功耗來源、有效性與時間窗，供核對讀值。
-- [ ] 執行 swift test、./build.sh、git diff --check 與 codesign --verify --deep --strict。
+- [ ] 執行 Scripts/test-power.sh、./build.sh、git diff --check 與 codesign --verify --deep --strict。
 - [ ] 檢視快照，實測展開與收合；量測面板開／關 CPU，確認面板關閉後無硬體取樣。
 - [ ] README 更新每 1 秒取樣、硬體來源、估算與相容性說明；僅報告實際驗證過的機型。
 - [ ] 執行 ./build.sh install 更新本機 App，確認已啟動；新功能不直接加入既有 PR #1。
+
+## 實機驗證紀錄
+
+已完成分層介面、每秒取樣、持續動畫及生命週期控制。Command Line Tools 未提供 XCTest，因此使用獨立 Swift 測試執行器；14 項測試通過。深淺色與完整面板快照已檢視，設定頁及關閉面板後停止採樣、返回主頁恢復均通過實測。Apple M2 Pro 的 CPU 能量計數器未更新，故保留缺值；系統總功耗沒有可核對的時間窗，故不生成其他殘差。CPU 使用率量測期間有互動干擾，未作背景效能比較結論。

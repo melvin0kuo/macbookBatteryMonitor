@@ -1,6 +1,12 @@
 import Foundation
 
 enum EnergyCounter {
+    /// 面板顯示期間 CPU 計數沒有前進時，不將凍結的計數顯示成零耗電。
+    static func updatedCPUWatts(_ watts: Double?) -> Double? {
+        guard let watts, watts.isFinite, watts > 0, watts < 500 else { return nil }
+        return watts
+    }
+
     static func joules(_ value: Double, unit: String) -> Double? {
         guard value.isFinite, value >= 0 else { return nil }
         let divisor: Double
@@ -54,6 +60,8 @@ struct ComponentPowerSample: Equatable, Codable {
     var gpuWatts: Double?
     var aneWatts: Double?
     var systemWatts: Double?
+    // SystemLoad 沒有公開時間戳；只有經驗證同步的資料才能計算殘差。
+    var systemWindowAligned = false
     var sampling = false
     var chipComplete: Bool { cpuWatts != nil && gpuWatts != nil && aneWatts != nil }
     var chipWatts: Double? {

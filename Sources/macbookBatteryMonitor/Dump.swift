@@ -2,6 +2,19 @@ import Foundation
 
 /// `macbookBatteryMonitor --dump`：把目前讀到的資料印成 JSON，方便和 pmset / system_profiler 對照
 enum DumpCommand {
+    static func runHardware() {
+        let reader = HardwarePowerReader()
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        for index in 0..<5 {
+            let sample = reader.sample()
+            if let data = try? encoder.encode(sample), let line = String(data: data, encoding: .utf8) {
+                print(line)
+            }
+            if index < 4 { Thread.sleep(forTimeInterval: 1) }
+        }
+    }
+
     private struct Output: Encodable {
         var snapshot: BatterySnapshot
         var estimates: Estimates

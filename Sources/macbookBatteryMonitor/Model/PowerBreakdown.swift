@@ -30,6 +30,7 @@ struct PowerBreakdown: Equatable {
         guard !components.sampling else { result.status = .sampling; return result }
         guard let system = result.systemWatts, let backlight = result.backlightWatts,
               let chip = result.chipWatts, chips.count == 3 else { return result }
+        guard components.systemWindowAligned else { result.status = .inconsistent; return result }
         let residual = system - backlight - chip
         guard residual >= 0 else { result.status = .inconsistent; return result }
         result.otherWatts = residual

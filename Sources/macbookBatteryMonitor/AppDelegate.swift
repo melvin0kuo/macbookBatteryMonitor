@@ -56,11 +56,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     /// 開發用：`--selftest-panel` 會打開面板（耗電排行分頁）20 秒後自動關閉，用來確認關閉後取樣會停
     private func runPanelSelfTestIfRequested() {
-        guard CommandLine.arguments.contains("--selftest-panel") else { return }
+        let hardware = CommandLine.arguments.contains("--selftest-hardware")
+        guard hardware || CommandLine.arguments.contains("--selftest-panel") else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
             guard let self else { return }
-            ui.tab = .processes
+            ui.tab = hardware ? .details : .processes
+            ui.powerFlowLevel = hardware ? .components : .overview
             showPopover(page: .main)
+            if hardware {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 4) { [weak self] in
+                    self?.ui.powerFlowLevel = .chip
+                    print("selftest: chip expanded")
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+                    self?.ui.page = .settings
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 9) { [weak self] in
+                    print("selftest: settings sampling stopped \(self?.store.componentPower == nil)")
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 11) { [weak self] in
+                    self?.ui.page = .main
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 14) { [weak self] in
+                    print("selftest: hardware sampling resumed \(self?.store.componentPower != nil)")
+                }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 22) { [weak self] in
+                    print("selftest: closed sampling stopped \(self?.store.componentPower == nil)")
+                }
+            }
             print("selftest: opened \(popover?.contentSize ?? .zero)")
             DispatchQueue.main.asyncAfter(deadline: .now() + 20) { [weak self] in
                 self?.popover?.performClose(nil)
