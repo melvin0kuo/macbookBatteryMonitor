@@ -1,9 +1,9 @@
 import Foundation
 
 enum EnergyCounter {
-    /// 面板顯示期間 CPU 計數沒有前進時，不將凍結的計數顯示成零耗電。
+    /// CPU 能量差為零時顯示 0 W；缺通道或無效讀值仍保留缺值。
     static func updatedCPUWatts(_ watts: Double?) -> Double? {
-        guard let watts, watts.isFinite, watts > 0, watts < 500 else { return nil }
+        guard let watts, watts.isFinite, watts >= 0, watts < 500 else { return nil }
         return watts
     }
 

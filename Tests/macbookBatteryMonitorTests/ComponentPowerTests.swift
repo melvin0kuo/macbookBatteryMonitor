@@ -4,8 +4,8 @@ func XCTAssertNil<T>(_ a: T?) { precondition(a == nil, "Expected nil, got \(Stri
 func XCTAssertTrue(_ a: Bool) { precondition(a) }
 
 final class ComponentPowerTests {
-    func testFrozenCPUCounterIsUnavailable() {
-        XCTAssertNil(EnergyCounter.updatedCPUWatts(0))
+    func testUnchangedCPUCounterIsZero() {
+        XCTAssertEqual(EnergyCounter.updatedCPUWatts(0), 0)
         XCTAssertNil(EnergyCounter.updatedCPUWatts(nil))
         XCTAssertEqual(EnergyCounter.updatedCPUWatts(1.5), 1.5)
     }
