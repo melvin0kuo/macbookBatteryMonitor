@@ -6,6 +6,7 @@ enum MenuBarDisplay: String, CaseIterable, Identifiable {
     case iconOnly
     case percentOnly
     case iconAndTime
+    case iconPercentAndTime
 
     var id: String { rawValue }
 
@@ -15,6 +16,7 @@ enum MenuBarDisplay: String, CaseIterable, Identifiable {
         case .iconOnly: return "只有圖示"
         case .percentOnly: return "只有百分比"
         case .iconAndTime: return "圖示 + 剩餘時間"
+        case .iconPercentAndTime: return "圖示內百分比 + 剩餘時間"
         }
     }
 }

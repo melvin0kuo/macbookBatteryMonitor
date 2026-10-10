@@ -174,11 +174,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         }
         let low = e.state == .discharging && s.percent <= settings.lowThreshold
         let minutes = e.state == .charging ? e.headlineToFull : e.headlineToEmpty
-        let key = "\(s.percent)|\(e.state)|\(low)|\(settings.display)|\(settings.display == .iconAndTime ? minutes ?? -1 : 0)"
+        let showsTime = settings.display == .iconAndTime || settings.display == .iconPercentAndTime
+        let key = "\(s.percent)|\(e.state)|\(low)|\(settings.display)|\(showsTime ? minutes ?? -1 : 0)"
         guard key != lastStatusKey else { return }
         lastStatusKey = key
 
-        button.image = settings.display == .percentOnly ? nil : StatusIconRenderer.image(percent: s.percent, state: e.state, low: low)
+        let inlinePercent = settings.display == .iconPercentAndTime
+        button.imagePosition = inlinePercent ? .imageLeading : .imageTrailing
+        button.image = settings.display == .percentOnly ? nil : StatusIconRenderer.image(percent: s.percent, state: e.state, low: low, showsPercent: inlinePercent)
         let text: String
         switch settings.display {
         case .iconAndPercent:
@@ -187,11 +190,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
             text = e.state == .charging ? "⚡\(s.percent)%" : "\(s.percent)%"
         case .iconOnly:
             text = ""
-        case .iconAndTime:
+        case .iconAndTime, .iconPercentAndTime:
+            let fallback = inlinePercent ? "—" : "\(s.percent)%"
             switch e.state {
-            case .discharging: text = Format.clock(e.headlineToEmpty) ?? "\(s.percent)%"
-            case .charging: text = Format.clock(e.headlineToFull) ?? "\(s.percent)%"
-            case .pluggedIdle, .full, .limitReached: text = "\(s.percent)%"
+            case .discharging: text = Format.clock(e.headlineToEmpty) ?? fallback
+            case .charging: text = Format.clock(e.headlineToFull) ?? fallback
+            case .full: text = inlinePercent ? "已充飽" : fallback
+            case .pluggedIdle: text = inlinePercent ? "接電" : fallback
+            case .limitReached: text = inlinePercent ? "已達上限" : fallback
             }
         }
         button.attributedTitle = NSAttributedString(
