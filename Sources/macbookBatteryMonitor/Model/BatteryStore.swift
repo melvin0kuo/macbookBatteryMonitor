@@ -12,6 +12,33 @@ final class BatteryStore {
     /// 這次拔掉電源的時間，用來算「已使用電池多久」
     private(set) var unpluggedAt: Date?
     let history = HistoryStore()
+    private(set) var componentPower: ComponentPowerSample?
+    private(set) var breakdown = PowerBreakdown(systemWatts: nil, status: .sampling)
+    @ObservationIgnored private let hardwareWorker = HardwarePowerWorker()
+    @ObservationIgnored private var samplingGate = SamplingGate()
+
+    func setHardwareSampling(active: Bool) {
+        let changed = samplingGate.active != active
+        samplingGate.setActive(active)
+        if !active {
+            if changed {
+                componentPower = nil
+                breakdown = PowerBreakdown(systemWatts: estimates?.systemWatts, status: .sampling)
+                let generation = samplingGate.generation
+                Task { await hardwareWorker.stop(generation: generation) }
+            }
+            return
+        }
+        guard let ticket = samplingGate.begin() else { return }
+        Task {
+            let result = await hardwareWorker.sample(generation: ticket)
+            guard samplingGate.finish(ticket), let result else { return }
+            componentPower = result
+            breakdown = PowerBreakdown.make(systemWatts: result.systemWatts,
+                components: result, now: ProcessInfo.processInfo.systemUptime)
+        }
+    }
+
 
     /// 平滑電流用的時間常數（秒），約等於「近 3 分鐘平均」
     @ObservationIgnored private let tau: Double = 180

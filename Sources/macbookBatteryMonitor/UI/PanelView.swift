@@ -51,6 +51,8 @@ struct PanelView: View {
             }
         }
         .padding(14)
+        .onAppear { store.setHardwareSampling(active: true) }
+        .onDisappear { store.setHardwareSampling(active: false) }
     }
 
     private func footer(updated: Date?) -> some View {

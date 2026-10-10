@@ -15,10 +15,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     private var timers: [Timer] = []
     /// 上次畫到選單列的內容，沒變就不重畫
     private var lastStatusKey = ""
+    private var sleeping = false
 
     /// 面板關著時的更新間隔。插拔電源由 IOPS 通知即時更新，不靠這個計時器
     private static let idleInterval: TimeInterval = 30
-    private static let openInterval: TimeInterval = 2
+    private static let openInterval: TimeInterval = 1
     private static let processInterval: TimeInterval = 5
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -76,6 +77,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     private func refresh() {
         store.refresh()
+        store.setHardwareSampling(active: ui.isVisible && ui.page == .main && !sleeping)
         updateStatusItem()
         if let s = store.snapshot, let e = store.estimates {
             Notifier.shared.evaluate(s, state: e.state, settings: settings)
@@ -111,10 +113,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     @objc private func willSleep() {
+        sleeping = true
+        store.setHardwareSampling(active: false)
         store.history.save()
     }
 
     @objc private func didWake() {
+        sleeping = false
         refresh()
         store.recordHistory()
     }
@@ -241,6 +246,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     func popoverDidClose(_ notification: Notification) {
         store.panelVisible = false
+        store.setHardwareSampling(active: false)
         processTimer?.invalidate()
         processTimer = nil
         scheduleRefresh(every: Self.idleInterval)
