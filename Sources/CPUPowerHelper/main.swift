@@ -1,6 +1,7 @@
 import Foundation
 import CPUPowerShared
 import Darwin
+import IOKit.pwr_mgt
 
 /// 所有子程序與租約狀態都只在同一個 queue 存取。
 final class CPUSampler {
@@ -133,9 +134,15 @@ final class CPUSampler {
             self.disabled = true
             self.reconcile()
             do {
+                if let data = try? Data(contentsOf: URL(fileURLWithPath: CPUHelperConstants.wakeRecord)),
+                   let text = String(data: data, encoding: .utf8), let epoch = TimeInterval(text) {
+                    _ = IOPMCancelScheduledPowerEvent(Date(timeIntervalSince1970: epoch) as CFDate,
+                                                      CPUHelperConstants.wakeIdentifier as CFString,
+                                                      kIOPMAutoWake as CFString)
+                }
                 // 固定 root 管理的位置，不從客戶端接受任何檔案路徑。
                 let fm = FileManager.default
-                for path in [CPUHelperConstants.launchDaemon, CPUHelperConstants.configuration,
+                for path in [CPUHelperConstants.launchDaemon, CPUHelperConstants.configuration, CPUHelperConstants.wakeRecord,
                              CPUHelperConstants.executable] {
                     if fm.fileExists(atPath: path) { try fm.removeItem(atPath: path) }
                 }
@@ -158,9 +165,47 @@ final class CPUSampler {
 final class CPUClient: NSObject, CPUHelperProtocol {
     let id = UUID()
     let sampler: CPUSampler
-    init(sampler: CPUSampler) { self.sampler = sampler }
+    let allowedUID: UInt32
+    init(sampler: CPUSampler, allowedUID: UInt32) {
+        self.sampler = sampler
+        self.allowedUID = allowedUID
+    }
     func sample(active: Bool, interval: Int, withReply reply: @escaping (Data) -> Void) {
         sampler.sample(client: id, active: active, interval: interval, reply: reply)
+    }
+    func scheduleWake(at epoch: TimeInterval, identifier: String, withReply reply: @escaping (String?) -> Void) {
+        guard WakeRequestValidator.validate(epoch: epoch, now: Date(), identifier: identifier,
+                                            uid: allowedUID) else {
+            reply("喚醒時間或識別碼不符合安全限制")
+            return
+        }
+        cancelRecordedWake(identifier: identifier)
+        let date = Date(timeIntervalSince1970: epoch)
+        let result = IOPMSchedulePowerEvent(date as CFDate, identifier as CFString,
+                                            kIOPMAutoWake as CFString)
+        if result == kIOReturnSuccess {
+            try? Data(String(epoch).utf8).write(to: URL(fileURLWithPath: CPUHelperConstants.wakeRecord), options: .atomic)
+            reply(nil)
+        } else {
+            reply("macOS 拒絕排程喚醒（\(result)）")
+        }
+    }
+    func cancelWake(identifier: String, withReply reply: @escaping (String?) -> Void) {
+        guard identifier == CPUHelperConstants.wakeIdentifier else {
+            reply("喚醒識別碼不符合安全限制")
+            return
+        }
+        cancelRecordedWake(identifier: identifier)
+        reply(nil)
+    }
+    private func cancelRecordedWake(identifier: String) {
+        let url = URL(fileURLWithPath: CPUHelperConstants.wakeRecord)
+        if let data = try? Data(contentsOf: url),
+           let text = String(data: data, encoding: .utf8), let epoch = TimeInterval(text) {
+            _ = IOPMCancelScheduledPowerEvent(Date(timeIntervalSince1970: epoch) as CFDate,
+                                              identifier as CFString, kIOPMAutoWake as CFString)
+        }
+        try? FileManager.default.removeItem(at: url)
     }
     func uninstall(withReply reply: @escaping (String?) -> Void) { sampler.uninstall(reply: reply) }
 }
@@ -172,7 +217,7 @@ final class ListenerDelegate: NSObject, NSXPCListenerDelegate {
     func listener(_ listener: NSXPCListener, shouldAcceptNewConnection connection: NSXPCConnection) -> Bool {
         // UID 由 root 擁有的安裝設定決定；其他使用者不能啟停服務。
         guard connection.effectiveUserIdentifier == allowedUID else { return false }
-        let client = CPUClient(sampler: sampler)
+        let client = CPUClient(sampler: sampler, allowedUID: allowedUID)
         connection.exportedInterface = NSXPCInterface(with: CPUHelperProtocol.self)
         connection.exportedObject = client
         connection.invalidationHandler = { [sampler] in sampler.disconnect(client.id) }

@@ -69,6 +69,7 @@ print("CPU stream tests passed")
 let leaseTests = CPULeaseTests()
 leaseTests.run()
 leaseTests.testIntervalAndPowerSavingFreshness()
+leaseTests.testWakeValidationAndHelperRetention()
 print("CPU lease, interval and freshness tests passed")
 let presentation = ChargingPresentationTests()
 presentation.testFullPriorityAndBriefFlagChanges()
@@ -99,3 +100,18 @@ chargeLimits.testOptionsFromSystem()
 chargeLimits.testNormalizedLimit()
 chargeLimits.testSliderPositions()
 print("3 charge limit slider tests passed")
+
+ChargingPlanTests().run()
+print("6 charging plan tests passed")
+
+DailyBatteryRecapTests().run()
+print("4 daily battery recap tests passed")
+
+ChargingPlanControllerTests().run()
+print("11 charging plan controller tests passed")
+
+ChargingJourneyTests().run()
+print("2 charging journey tests passed")
+
+ChargingPlanNotificationTests().run()
+print("2 charging notification and recap presentation tests passed")

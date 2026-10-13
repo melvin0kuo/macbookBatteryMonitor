@@ -45,6 +45,33 @@ enum ScreenshotCommand {
         SnapshotCommand.render(powerSaving, appearance: .darkAqua, settle: 0.6, to: dir.appendingPathComponent("power-saving.png"))
         settings.powerSaving = previous
 
+        // 智慧充電旅程與排程頁：固定示範資料，不讀取或修改系統充電設定
+        let previousStyle = settings.chargingVisualStyle
+        settings.chargingVisualStyle = .mascot
+        store.loadPluggedPreview(now: now, atLimit: true)
+        let previewDeadline = now.addingTimeInterval(3 * 3600)
+        store.chargingPlan.loadPreview(ChargingPlan(schedule: .oneOff(previewDeadline), deadline: previewDeadline,
+                                                    targetPercent: 100, holdPercent: 80, restoreLimit: 80,
+                                                    sleepStrategy: .readinessFirst, createdAt: now))
+        _ = store.chargingPlan.evaluate(input: ChargingPlanInput(now: now, percent: 80, connected: true,
+                                                                 limitSupported: true, currentLimit: 80,
+                                                                 estimatedMinutes: 45, isCharging: false,
+                                                                 systemPaused: true), reason: .refresh)
+        ui.page = .main
+        let journey = Showcase(menuItems: [battery]) {
+            Popover { RootView(store: store, settings: settings, ui: ui) }
+        }
+        SnapshotCommand.render(journey, appearance: .darkAqua, settle: 0.6,
+                               to: dir.appendingPathComponent("charging-journey.png"))
+        ui.page = .chargingPlan
+        let plan = Showcase(menuItems: [battery]) {
+            Popover { RootView(store: store, settings: settings, ui: ui) }
+        }
+        SnapshotCommand.render(plan, appearance: .aqua, settle: 0.6,
+                               to: dir.appendingPathComponent("charging-plan.png"))
+        settings.chargingVisualStyle = previousStyle
+        ui.page = .main
+
         // 周邊設備分頁（示範設備）
         store.peripherals.loadPreview(now: now)
         ui.tab = .peripherals
@@ -52,6 +79,12 @@ enum ScreenshotCommand {
             Popover { RootView(store: store, settings: settings, ui: ui) }
         }
         SnapshotCommand.render(peripherals, appearance: .darkAqua, settle: 0.6, to: dir.appendingPathComponent("peripherals.png"))
+        ui.tab = .recap
+        let recap = Showcase(menuItems: [battery]) {
+            Popover { RootView(store: store, settings: settings, ui: ui) }
+        }
+        SnapshotCommand.render(recap, appearance: .darkAqua, settle: 0.6,
+                               to: dir.appendingPathComponent("daily-recap.png"))
         ui.tab = .details
         print("已輸出到 \(dir.path)")
     }
@@ -89,7 +122,6 @@ enum ScreenshotCommand {
             .padding(24)
             .background(LinearGradient(colors: [Color(red: 0.16, green: 0.20, blue: 0.30), Color(red: 0.08, green: 0.09, blue: 0.13)],
                                        startPoint: .topLeading, endPoint: .bottomTrailing))
-            .environment(\.colorScheme, .dark)
         }
     }
 

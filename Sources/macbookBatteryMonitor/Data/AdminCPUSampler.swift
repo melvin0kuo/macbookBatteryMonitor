@@ -230,6 +230,11 @@ final class AdminCPUSampler {
     private func disable(finalStatus: String = "已關閉並移除 CPU 服務") {
         reading = nil
         desiredActive = false
+        guard !AppSettings.shared.preciseChargingScheduling else {
+            disconnect()
+            status = "CPU 取樣已關閉；排程喚醒仍在使用服務"
+            return
+        }
         // 授權進行中：先取消，安裝程序結束的回呼看到選項已關會再移除，避免留下孤兒服務
         if let process {
             if let installLease { try? FileManager.default.removeItem(at: installLease) }

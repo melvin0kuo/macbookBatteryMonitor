@@ -43,4 +43,29 @@ final class CPULeaseTests {
         XCTAssertEqual(reading.freshWatts(at: 13.5, maxAge: 4), 4.2)
         XCTAssertNil(reading.freshWatts(at: 14.5, maxAge: 4))
     }
+
+    func testWakeValidationAndHelperRetention() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        XCTAssertTrue(WakeRequestValidator.validate(epoch: now.addingTimeInterval(60).timeIntervalSince1970,
+                                                     now: now, identifier: CPUHelperConstants.wakeIdentifier, uid: 501))
+        XCTAssertTrue(WakeRequestValidator.validate(epoch: now.addingTimeInterval(7 * 24 * 3600).timeIntervalSince1970,
+                                                     now: now, identifier: CPUHelperConstants.wakeIdentifier, uid: 501))
+        XCTAssertTrue(!WakeRequestValidator.validate(epoch: now.addingTimeInterval(59).timeIntervalSince1970,
+                                                      now: now, identifier: CPUHelperConstants.wakeIdentifier, uid: 501))
+        XCTAssertTrue(!WakeRequestValidator.validate(epoch: now.addingTimeInterval(7 * 24 * 3600 + 1).timeIntervalSince1970,
+                                                      now: now, identifier: CPUHelperConstants.wakeIdentifier, uid: 501))
+        XCTAssertTrue(!WakeRequestValidator.validate(epoch: .nan, now: now,
+                                                      identifier: CPUHelperConstants.wakeIdentifier, uid: 501))
+        XCTAssertTrue(!WakeRequestValidator.validate(epoch: now.addingTimeInterval(600).timeIntervalSince1970,
+                                                      now: now, identifier: "other", uid: 501))
+        XCTAssertTrue(!WakeRequestValidator.validate(epoch: now.addingTimeInterval(600).timeIntervalSince1970,
+                                                      now: now, identifier: CPUHelperConstants.wakeIdentifier, uid: 0))
+        XCTAssertTrue(HelperRetentionPolicy.shouldKeep(cpuSampling: true, preciseCharging: false))
+        XCTAssertTrue(HelperRetentionPolicy.shouldKeep(cpuSampling: false, preciseCharging: true))
+        XCTAssertTrue(!HelperRetentionPolicy.shouldKeep(cpuSampling: false, preciseCharging: false))
+        let wake = now.addingTimeInterval(3600)
+        XCTAssertTrue(WakeSchedulePolicy.shouldReplace(existing: nil, candidate: wake))
+        XCTAssertTrue(!WakeSchedulePolicy.shouldReplace(existing: wake, candidate: wake.addingTimeInterval(299)))
+        XCTAssertTrue(WakeSchedulePolicy.shouldReplace(existing: wake, candidate: wake.addingTimeInterval(300)))
+    }
 }

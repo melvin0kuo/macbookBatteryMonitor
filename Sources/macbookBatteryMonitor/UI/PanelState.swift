@@ -6,6 +6,7 @@ enum PowerFlowLevel { case overview, components, chip }
 enum PanelPage {
     case main
     case settings
+    case chargingPlan
     /// 設定 → 顯示項目
     case displayItems
 }
@@ -15,6 +16,7 @@ enum BottomTab: String, CaseIterable {
     case history = "電量歷史"
     case processes = "耗電排行"
     case peripherals = "周邊設備"
+    case recap = "今日"
 }
 
 enum HistoryRange: String, CaseIterable, Identifiable {
@@ -44,6 +46,9 @@ final class PanelState {
     var page: PanelPage = .main
     var tab: BottomTab = .details
     var historyRange: HistoryRange = .day
+    var chargingWeekdays: Set<Int> = [2, 3, 4, 5, 6]
+    var chargingTime: Date = Calendar.current.date(from: DateComponents(hour: 8, minute: 0)) ?? Date()
+    var customChargingDeadline: Date = Date().addingTimeInterval(4 * 3600)
     /// 設定頁等可捲動頁面量到的內容高度，下次打開直接用，面板不必先撐到最高再縮回來
     var pageHeights: [PanelPage: CGFloat] = [:]
     var loginStatus: LoginItem.Status = .disabled

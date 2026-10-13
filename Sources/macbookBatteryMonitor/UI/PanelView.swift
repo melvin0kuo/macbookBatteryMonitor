@@ -12,7 +12,8 @@ struct RootView: View {
             } else {
                 switch ui.page {
                 case .main: PanelView(store: store, settings: settings, ui: ui)
-                case .settings: ScrollingPage(page: .settings, ui: ui) { SettingsView(settings: settings, ui: ui, adminCPU: store.adminCPU, updater: store.updater, chargeLimit: store.chargeLimit) }
+                case .settings: ScrollingPage(page: .settings, ui: ui) { SettingsView(settings: settings, ui: ui, adminCPU: store.adminCPU, updater: store.updater, chargeLimit: store.chargeLimit, chargingWake: store.chargingWake) }
+                case .chargingPlan: ScrollingPage(page: .chargingPlan, ui: ui) { ChargingPlanView(store: store, settings: settings, ui: ui) }
                 case .displayItems: ScrollingPage(page: .displayItems, ui: ui) { DisplayItemsView(settings: settings, ui: ui, limitSlider: store.chargeLimit.supported) }
                 }
             }
@@ -31,7 +32,12 @@ struct PanelView: View {
             if let s = store.snapshot, let e = store.estimates {
                 HeaderView(s: s, e: e, lowThreshold: settings.lowThreshold)
                 TimeCard(s: s, e: e, unpluggedAt: store.unpluggedAt, fullThreshold: settings.fullThreshold,
-                         chargeLimit: store.chargeLimit.supported ? store.chargeLimit : nil)
+                         chargeLimit: store.chargeLimit.supported ? store.chargeLimit : nil,
+                         journey: ChargingJourneyPresentation.make(snapshot: s, estimates: e,
+                                                                   decision: store.chargingPlan.decision),
+                         visualStyle: settings.chargingVisualStyle,
+                         animated: ui.isVisible && !settings.powerSaving,
+                         openPlan: { ui.page = .chargingPlan })
                 PowerFlowView(s: s, e: e, breakdown: store.breakdown, ui: ui, powerSaving: settings.powerSaving)
                 Picker("", selection: ui.binding(\.tab)) {
                     ForEach(BottomTab.allCases, id: \.self) { Text($0.rawValue).tag($0) }
@@ -44,6 +50,7 @@ struct PanelView: View {
                     case .history: HistoryChartView(history: store.history, ui: ui)
                     case .processes: TopProcessesView(store: store)
                     case .peripherals: PeripheralsView(store: store.peripherals, settings: settings)
+                    case .recap: DailyRecapView(recap: store.history.todayRecap(now: s.date))
                     }
                 }
                 .frame(height: 231, alignment: .top)
@@ -153,6 +160,10 @@ private struct TimeCard: View {
     let fullThreshold: Int
     /// 充電上限滑桿（支援調整的 Mac 才有），放在卡片最上方
     var chargeLimit: SystemChargeLimit?
+    let journey: ChargingJourneyPresentation
+    let visualStyle: ChargingVisualStyle
+    let animated: Bool
+    let openPlan: () -> Void
 
     /// 上限數值只在滑桿顯示，卡片其他地方不再重複
     private var limitShownAbove: Bool { chargeLimit != nil }
@@ -160,6 +171,9 @@ private struct TimeCard: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: 10) {
+                ChargingJourneyView(presentation: journey, style: visualStyle,
+                                    animated: animated, openPlan: openPlan)
+                Divider()
                 if let chargeLimit {
                     ChargeLimitSlider(control: chargeLimit)
                     Divider()

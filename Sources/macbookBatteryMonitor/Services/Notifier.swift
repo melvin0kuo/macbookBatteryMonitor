@@ -83,6 +83,16 @@ final class Notifier: NSObject, UNUserNotificationCenterDelegate {
         post(title: AppEdition.current.appName, body: "通知功能正常 👍")
     }
 
+    func notifyChargingPlan(_ event: ChargingPlanNotification, target: Int, deadline: Date) {
+        let time = deadline.formatted(date: .omitted, time: .shortened)
+        switch event {
+        case .ready:
+            post(title: "充電已準備好：\(target)%", body: "已在目標時間 \(time) 前完成。")
+        case .late:
+            post(title: "充電可能無法準時", body: "macOS 仍在充電，原定 \(time) 達到 \(target)% 。")
+        }
+    }
+
     private func post(title: String, body: String) {
         guard available else { return }
         let content = UNMutableNotificationContent()

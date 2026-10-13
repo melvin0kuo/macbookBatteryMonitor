@@ -31,6 +31,7 @@ final class SystemChargeLimit {
     @ObservationIgnored private var notifyToken: Int32 = 0
     @ObservationIgnored private var editing = false
     @ObservationIgnored private var commitTask: Task<Void, Never>?
+    @ObservationIgnored private var automatedWriteTail: Task<Void, Never>?
 
     /// 滑桿與數字顯示的值
     var shown: Int { draft ?? limit }
@@ -73,6 +74,42 @@ final class SystemChargeLimit {
     func setEditing(_ editing: Bool) {
         self.editing = editing
         if !editing { commit() }
+    }
+
+    /// 智慧充電排程使用的確認式寫入；只有系統回讀到目標值才回傳成功。
+    func apply(_ target: Int) async -> Bool {
+        guard supported, options.contains(target) else { return false }
+        let previous = automatedWriteTail
+        let operation = Task { @MainActor [weak self] () -> Bool in
+            if let previous { await previous.value }
+            guard let self else { return false }
+            // 滑桿可能剛好正在寫入；等它完成後再套用排程的最新目標，避免取消／還原被吃掉。
+            for _ in 0..<100 where self.status == .applying {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            guard self.status != .applying else { return false }
+            return await self.performAutomatedWrite(target)
+        }
+        automatedWriteTail = Task { @MainActor in _ = await operation.value }
+        return await operation.value
+    }
+
+    private func performAutomatedWrite(_ target: Int) async -> Bool {
+        guard supported, options.contains(target) else { return false }
+        if target == limit { return true }
+        status = .applying
+        let outcome = await service.set(target)
+        switch outcome {
+        case .applied(let reading):
+            apply(reading)
+            status = .idle
+            if draft != nil { commit() }
+            return reading.limit == target
+        case .rejected(let code, let after):
+            if let after { apply(after) }
+            status = .failed("macOS 沒有套用新的充電上限\(code.map { "（錯誤 \($0)）" } ?? "")，請改在系統設定中調整。")
+            return false
+        }
     }
 
     /// 開發用截圖：不讀系統，直接用示範值

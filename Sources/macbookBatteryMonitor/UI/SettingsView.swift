@@ -6,6 +6,7 @@ struct SettingsView: View {
     let adminCPU: AdminCPUSampler
     let updater: Updater
     let chargeLimit: SystemChargeLimit
+    let chargingWake: ChargingWakeScheduler
 
     private var limitText: String {
         if chargeLimit.supported { return chargeLimit.limit >= 100 ? "不限制（100%）" : "\(chargeLimit.limit)%" }
@@ -24,6 +25,20 @@ struct SettingsView: View {
                     }
                     .buttonStyle(.borderless)
                     Spacer()
+                }
+            }
+
+            Card {
+                VStack(alignment: .leading, spacing: 8) {
+                    CardTitle("智慧充電", systemImage: "clock.badge.checkmark")
+                    Picker("旅程外觀", selection: binding(\.chargingVisualStyle)) {
+                        ForEach(ChargingVisualStyle.allCases) { Text($0.title).tag($0) }
+                    }
+                    SwitchRow("允許精準排程喚醒", isOn: binding(\.preciseChargingScheduling))
+                    Text("開啟一次並授權後會保持啟用。App 只安排固定的充電喚醒事件；關閉後會取消事件，且沒有其他管理員功能使用時移除服務。")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Text(chargingWake.status).font(.caption).foregroundStyle(.secondary)
+                    Button("設定充電完成時間…") { ui.page = .chargingPlan }
                 }
             }
 

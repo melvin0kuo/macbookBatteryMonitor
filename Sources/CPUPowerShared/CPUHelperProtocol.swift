@@ -5,9 +5,11 @@ public enum CPUHelperConstants {
     public static let directory = "/Library/PrivilegedHelperTools/com.kuan.batterymonitor.cpu"
     public static let executable = directory + "/CPUPowerHelper"
     public static let configuration = directory + "/config.json"
+    public static let wakeRecord = directory + "/wake.json"
     public static let launchDaemon = "/Library/LaunchDaemons/" + label + ".plist"
     /// 通訊協定改變時加一；舊版服務會被視為未安裝，需要重新授權
-    public static let version = 3
+    public static let version = 4
+    public static let wakeIdentifier = "com.kuan.batterymonitor.charging-plan"
     /// 沒有任何取樣租約多久後服務自行結束（launchd 會在下次連線時再啟動）
     public static let idleExit: TimeInterval = 30
 
@@ -17,6 +19,28 @@ public enum CPUHelperConstants {
 
     /// 取樣租約的有效時間：至少 5 秒，且要比兩次要求的間隔長，App 每次更新續約
     public static func leaseDuration(interval: Int) -> TimeInterval { TimeInterval(max(5, samplingInterval(interval) * 2 + 1)) }
+}
+
+public enum WakeRequestValidator {
+    public static func validate(epoch: TimeInterval, now: Date, identifier: String, uid: UInt32) -> Bool {
+        guard epoch.isFinite, uid != 0, identifier == CPUHelperConstants.wakeIdentifier else { return false }
+        let interval = epoch - now.timeIntervalSince1970
+        return interval >= 60 && interval <= 7 * 24 * 3600
+    }
+}
+
+public enum HelperRetentionPolicy {
+    public static func shouldKeep(cpuSampling: Bool, preciseCharging: Bool) -> Bool {
+        cpuSampling || preciseCharging
+    }
+}
+
+public enum WakeSchedulePolicy {
+    /// 小幅估算波動不重寫系統事件；相差五分鐘以上才更新。
+    public static func shouldReplace(existing: Date?, candidate: Date) -> Bool {
+        guard let existing else { return true }
+        return abs(candidate.timeIntervalSince(existing)) >= 5 * 60
+    }
 }
 
 public struct CPUHelperConfiguration: Codable {
@@ -39,5 +63,7 @@ public struct CPUHelperReply: Codable {
 /// 不接受指令、路徑或 PID；取樣間隔只能是 1、2、5、10 秒。唯一高權限工作是固定的 CPU 功耗讀取。
 @objc public protocol CPUHelperProtocol {
     func sample(active: Bool, interval: Int, withReply reply: @escaping (Data) -> Void)
+    func scheduleWake(at epoch: TimeInterval, identifier: String, withReply reply: @escaping (String?) -> Void)
+    func cancelWake(identifier: String, withReply reply: @escaping (String?) -> Void)
     func uninstall(withReply reply: @escaping (String?) -> Void)
 }

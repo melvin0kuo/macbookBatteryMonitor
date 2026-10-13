@@ -43,6 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
         settings.onChange = { [weak self] in self?.updateStatusItem() }
         settings.onIntervalChange = { [weak self] in self?.applySampleInterval() }
+        settings.onPreciseChargingChange = { [weak self] in self?.store.syncChargingWake() }
         // 電池版不建立任何系統監控圖示與計時器
         if AppEdition.current.hasSystemMonitors {
             settings.onMonitorsChange = { [weak self] in self?.monitors.syncItems() }
@@ -69,7 +70,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         // 周邊設備電量變化很慢，每 60 秒查一次；面板停在周邊設備分頁時連所有藍牙設備一起查
         store.peripherals.refresh()
         // 系統充電上限：啟動時讀一次，之後由系統通知、打開面板時重新讀取；在面板上調整後立即更新選單列與面板
-        store.chargeLimit.onChange = { [weak self] in self?.refresh() }
+        store.chargeLimit.onChange = { [weak self] in
+            guard let self, !self.sleeping else { return }
+            self.refresh()
+        }
         store.chargeLimit.start()
         // 自動檢查更新：啟動 15 秒後與之後每 6 小時看一次，距離上次檢查超過一天才真的連線
         DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
@@ -154,6 +158,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         store.adminCPU.stop()
+        store.chargingWake.stop()
         store.history.save()
     }
 
@@ -166,6 +171,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         updateStatusItem()
         if let s = store.snapshot, let e = store.estimates {
             Notifier.shared.evaluate(s, state: e.state, settings: settings)
+        }
+        if let plan = store.chargingPlan.plan {
+            if store.chargingPlan.consumeReadyNotification() {
+                Notifier.shared.notifyChargingPlan(.ready, target: plan.targetPercent, deadline: plan.deadline)
+            } else if store.chargingPlan.consumeLateNotification() {
+                Notifier.shared.notifyChargingPlan(.late, target: plan.targetPercent, deadline: plan.deadline)
+            }
         }
     }
 
@@ -232,6 +244,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
     }
 
     @objc private func willSleep() {
+        store.prepareChargingPlanForSleep()
         sleeping = true
         powerTransitionTask?.cancel()
         store.setHardwareSampling(active: false)
@@ -244,6 +257,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSPopoverDelegate {
         sleeping = false
         monitors.setSleeping(false)
         refresh()
+        store.reevaluateChargingPlanAfterWake()
         store.peripherals.refresh()
         store.recordHistory()
     }

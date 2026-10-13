@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import IOKit.pwr_mgt
 
 @MainActor
 @Observable
@@ -19,6 +20,8 @@ final class BatteryStore {
     let updater = Updater()
     /// 主面板的充電上限滑桿（調整 macOS 系統設定裡的充電上限）
     let chargeLimit = SystemChargeLimit()
+    let chargingPlan = ChargingPlanController()
+    let chargingWake = ChargingWakeScheduler()
     private(set) var componentPower: ComponentPowerSample?
     private(set) var breakdown = PowerBreakdown(systemWatts: nil, status: .sampling)
     @ObservationIgnored private let hardwareWorker = HardwarePowerWorker()
@@ -112,6 +115,63 @@ final class BatteryStore {
         computed.displayFlow = flowPresentation.kind(connected: s.externalConnected, watts: computed.batteryWatts,
             holding: holding, uptime: ProcessInfo.processInfo.systemUptime)
         estimates = computed
+        evaluateChargingPlan(reason: .refresh)
+    }
+
+    func prepareChargingPlanForSleep() {
+        let assertion = ChargingSleepAssertion()
+        evaluateChargingPlan(reason: .willSleep) { assertion?.release() }
+    }
+
+    func reevaluateChargingPlanAfterWake() {
+        evaluateChargingPlan(reason: .didWake)
+    }
+
+    func cancelChargingPlan() {
+        guard let target = chargingPlan.cancel(currentLimit: chargeLimit.limit) else { return }
+        applyScheduledLimit(target)
+    }
+
+    private func evaluateChargingPlan(reason: ChargingEvaluationReason, completion: (() -> Void)? = nil) {
+        guard let s = snapshot, let e = estimates else { completion?(); return }
+        let estimated = Estimator.minutesToCharge(to: chargingPlan.plan?.targetPercent ?? 100,
+                                                   snapshot: s, estimates: e)
+            ?? chargingHistoryEstimate(snapshot: s)
+        let input = ChargingPlanInput(now: s.date, percent: s.percent,
+                                      connected: s.externalConnected,
+                                      limitSupported: chargeLimit.supported,
+                                      currentLimit: chargeLimit.limit,
+                                      estimatedMinutes: estimated,
+                                      isCharging: e.state == .charging,
+                                      systemPaused: e.state == .pluggedIdle || e.state == .limitReached)
+        let target = chargingPlan.evaluate(input: input, reason: reason,
+                                           preciseWakeAvailable: chargingWake.hasUsableScheduledWake)
+        syncChargingWake()
+        guard let target else { completion?(); return }
+        applyScheduledLimit(target, refreshAfterWrite: reason != .willSleep, completion: completion)
+    }
+
+    func syncChargingWake() {
+        chargingWake.sync(decision: chargingPlan.decision,
+                          enabled: AppSettings.shared.preciseChargingScheduling)
+    }
+
+    private func chargingHistoryEstimate(snapshot: BatterySnapshot) -> Int? {
+        guard let target = chargingPlan.plan?.targetPercent, target > snapshot.percent,
+              let rate = ChargingRateEstimator.percentPerHour(samples: history.samples, now: snapshot.date) else {
+            return nil
+        }
+        return Int(ceil(Double(target - snapshot.percent) / rate * 60))
+    }
+
+    private func applyScheduledLimit(_ target: Int, refreshAfterWrite: Bool = true,
+                                     completion: (() -> Void)? = nil) {
+        Task {
+            let success = await chargeLimit.apply(target)
+            chargingPlan.completeLimitWrite(target: target, success: success)
+            if success && refreshAfterWrite { refresh() }
+            completion?()
+        }
     }
 
     func recordHistory() {
@@ -248,4 +308,25 @@ final class BatteryStore {
         avgCharge = atLimit ? nil : 1500
         estimates = Estimator.estimates(s, avgDischarge_mA: nil, avgCharge_mA: avgCharge)
     }
+}
+
+/// 睡眠通知到寫入確認之間短暫延後系統睡眠，最久由寫入本身的逾時保護結束。
+private final class ChargingSleepAssertion {
+    private var id: IOPMAssertionID = 0
+
+    init?() {
+        let result = IOPMAssertionCreateWithName(kIOPMAssertionTypePreventSystemSleep as CFString,
+                                                 IOPMAssertionLevel(kIOPMAssertionLevelOn),
+                                                 "正在套用智慧充電上限" as CFString, &id)
+        guard result == kIOReturnSuccess else { return nil }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in self?.release() }
+    }
+
+    func release() {
+        guard id != 0 else { return }
+        IOPMAssertionRelease(id)
+        id = 0
+    }
+
+    deinit { release() }
 }

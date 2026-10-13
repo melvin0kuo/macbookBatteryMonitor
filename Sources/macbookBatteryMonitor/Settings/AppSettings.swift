@@ -33,6 +33,7 @@ final class AppSettings {
     @ObservationIgnored var onMonitorsChange: (() -> Void)?
     /// 更新頻率或省電模式改變時呼叫（重設所有取樣間隔）
     @ObservationIgnored var onIntervalChange: (() -> Void)?
+    @ObservationIgnored var onPreciseChargingChange: (() -> Void)?
 
     /// 可選的更新頻率（秒）
     static let updateIntervals = [1, 2, 5, 10]
@@ -81,6 +82,28 @@ final class AppSettings {
     /// 選用的管理員 CPU 取樣（預設關閉）。開啟時安裝系統服務，關閉時移除；由 AdminCPUSampler 在下一次更新時套用
     var adminCPUSampling: Bool {
         didSet { defaults.set(adminCPUSampling, forKey: Keys.adminCPUSampling) }
+    }
+
+    var chargingVisualStyle: ChargingVisualStyle {
+        didSet { defaults.set(chargingVisualStyle.rawValue, forKey: Keys.chargingVisualStyle) }
+    }
+    var chargingHoldPercent: Int {
+        didSet { defaults.set(chargingHoldPercent, forKey: Keys.chargingHoldPercent) }
+    }
+    var chargingTargetPercent: Int {
+        didSet {
+            defaults.set(chargingTargetPercent, forKey: Keys.chargingTargetPercent)
+            if chargingHoldPercent > chargingTargetPercent { chargingHoldPercent = chargingTargetPercent }
+        }
+    }
+    var chargingSleepStrategy: ChargingSleepStrategy {
+        didSet { defaults.set(chargingSleepStrategy.rawValue, forKey: Keys.chargingSleepStrategy) }
+    }
+    var preciseChargingScheduling: Bool {
+        didSet {
+            defaults.set(preciseChargingScheduling, forKey: Keys.preciseChargingScheduling)
+            onPreciseChargingChange?()
+        }
     }
 
     /// 電力流向細項中隱藏的項目（FlowItem.rawValue）
@@ -157,6 +180,11 @@ final class AppSettings {
         static let appIconColor = "appIconColor"
         static let autoCheckUpdates = "autoCheckUpdates"
         static let adminCPUSampling = "adminCPUSampling"
+        static let chargingVisualStyle = "chargingVisualStyle"
+        static let chargingHoldPercent = "chargingHoldPercent"
+        static let chargingTargetPercent = "chargingTargetPercent"
+        static let chargingSleepStrategy = "chargingSleepStrategy"
+        static let preciseChargingScheduling = "preciseChargingScheduling"
     }
 
     private init() {
@@ -174,6 +202,11 @@ final class AppSettings {
             Keys.updateInterval: 1,
             Keys.adminCPUSampling: false,
             Keys.autoCheckUpdates: true,
+            Keys.chargingVisualStyle: ChargingVisualStyle.energy.rawValue,
+            Keys.chargingHoldPercent: 80,
+            Keys.chargingTargetPercent: 100,
+            Keys.chargingSleepStrategy: ChargingSleepStrategy.readinessFirst.rawValue,
+            Keys.preciseChargingScheduling: false,
         ])
         adminCPUSampling = defaults.bool(forKey: Keys.adminCPUSampling)
         display = MenuBarDisplay(rawValue: defaults.string(forKey: Keys.display) ?? "") ?? .iconAndPercent
@@ -193,5 +226,10 @@ final class AppSettings {
         peripheralThresholds = defaults.dictionary(forKey: Keys.peripheralThresholds) as? [String: Int] ?? [:]
         appIconColor = AppIconColor(rawValue: defaults.string(forKey: Keys.appIconColor) ?? "") ?? .mint
         autoCheckUpdates = defaults.bool(forKey: Keys.autoCheckUpdates)
+        chargingVisualStyle = ChargingVisualStyle(rawValue: defaults.string(forKey: Keys.chargingVisualStyle) ?? "") ?? .energy
+        chargingHoldPercent = max(50, min(100, defaults.integer(forKey: Keys.chargingHoldPercent)))
+        chargingTargetPercent = max(50, min(100, defaults.integer(forKey: Keys.chargingTargetPercent)))
+        chargingSleepStrategy = ChargingSleepStrategy(rawValue: defaults.string(forKey: Keys.chargingSleepStrategy) ?? "") ?? .readinessFirst
+        preciseChargingScheduling = defaults.bool(forKey: Keys.preciseChargingScheduling)
     }
 }

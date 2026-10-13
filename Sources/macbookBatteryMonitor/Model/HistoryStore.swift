@@ -95,6 +95,10 @@ final class HistoryStore {
         unsaved = 0
     }
 
+    func todayRecap(now: Date = Date(), calendar: Calendar = .current) -> DailyBatteryRecap {
+        DailyBatteryRecap.make(samples: samples, day: now, calendar: calendar)
+    }
+
     /// 最近一次從接電變成用電池的時間。紀錄太舊（App 中間沒在跑）就不採信。
     func lastUnplugged() -> Date? {
         guard let last = samples.last, !last.plugged, Date().timeIntervalSince(last.t) < 600 else { return nil }
